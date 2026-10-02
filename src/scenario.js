@@ -95,6 +95,8 @@ export function defaultScenario() {
     borders: clone(BORDER_PRESETS[0].borders),
     advanced: clone(DEFAULT_ADVANCED),
     levers: { ...DEFAULT_LEVERS },
+    // Page state that travels with a shared link; the engine ignores it.
+    ui: { view: 'overview', breakdown: false },
   };
 }
 
@@ -118,6 +120,7 @@ export function normalizeScenario(s) {
     borders: Array.isArray(s?.borders) && s.borders.length ? s.borders : d.borders,
     advanced: { ...d.advanced, ...(s?.advanced || {}), prices: { ...d.advanced.prices, ...(s?.advanced?.prices || {}) } },
     levers: { ...d.levers, ...(s?.levers || {}) },
+    ui: { ...d.ui, ...(s?.ui || {}) },
   };
 }
 

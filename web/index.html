@@ -7,17 +7,23 @@
 <meta name="description" content="Size private inference capacity across borders and see what each border costs compared with one shared pool. Runs entirely in your browser.">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-view="overview">
 <header class="top">
-  <h1>Sovereignty Tax Calculator</h1>
-  <p class="lede">How many more GPUs, and how much more power, do your borders need than one shared pool, and how much of that can you win back? Everything runs in your browser; nothing you enter leaves this page.</p>
+  <div class="title">
+    <h1>Sovereignty Tax Calculator</h1>
+    <p class="lede">What do your borders cost in GPUs and power compared with one shared pool, and how much can you win back? Nothing you enter leaves this page.</p>
+  </div>
+  <div class="view-toggle" role="group" aria-label="View">
+    <button type="button" data-view="overview" aria-pressed="true">Overview</button>
+    <button type="button" data-view="detail" aria-pressed="false">Engineering detail</button>
+  </div>
 </header>
 
 <main class="layout">
   <form id="inputs" class="inputs" aria-label="Inputs" autocomplete="off">
     <fieldset>
-      <legend>Basic</legend>
-      <label>Workload preset <select id="workload"></select></label>
+      <legend>Your scenario</legend>
+      <label>Workload <select id="workload"></select></label>
       <label>Model <select id="model"></select></label>
       <div id="customModel" class="sub" hidden>
         <label>Total parameters (B) <input id="cmTotal" type="number" min="0.1" step="0.1" value="70"></label>
@@ -27,10 +33,10 @@
         <label>Head dimension <input id="cmHead" type="number" min="1" step="1" value="128"></label>
       </div>
       <label>GPU <select id="gpu"></select></label>
-      <label>Precision <select id="precision"></select></label>
-      <div class="row">
-        <label>Demand <input id="demandValue" type="number" min="0" step="any"></label>
-        <label>Unit
+      <label class="eng">Precision <select id="precision"></select></label>
+      <div class="row demand">
+        <label><span id="demandLabel">Demand (B tokens per day)</span> <input id="demandValue" type="number" min="0" step="any"></label>
+        <label class="eng">Unit
           <select id="demandMode">
             <option value="tokens">B tokens per day</option>
             <option value="requests">Requests per day</option>
@@ -38,17 +44,25 @@
         </label>
       </div>
       <p class="hint" id="demandHint"></p>
-      <label>Border preset <select id="borderPreset"></select></label>
-      <div id="borders" class="borders" role="group" aria-label="Borders"></div>
-      <button type="button" id="addBorder" class="secondary">Add border</button>
     </fieldset>
 
     <fieldset>
-      <legend>Levers</legend>
+      <legend>Borders</legend>
+      <label>Preset <select id="borderPreset"></select></label>
+      <p class="summary" id="borderSummary"></p>
+      <details id="borderEditor">
+        <summary>Edit borders</summary>
+        <div id="borders" class="borders" role="group" aria-label="Borders"></div>
+        <button type="button" id="addBorder" class="secondary">Add border</button>
+      </details>
+    </fieldset>
+
+    <fieldset>
+      <legend>Win back GPUs</legend>
       <div id="levers"></div>
     </fieldset>
 
-    <details id="advanced">
+    <details id="advanced" class="eng">
       <summary>Advanced assumptions</summary>
       <fieldset>
         <label>Data allowed to leave (%) <input id="leaveShare" type="number" min="0" max="100" step="1"></label>
@@ -106,38 +120,49 @@
   </form>
 
   <section class="results" aria-label="Results" aria-live="polite">
-    <p class="disclaimer"><strong>Planning estimate, not a quote.</strong> Every number carries a badge: <span class="badge measured">measured</span> in our benchmark, <span class="badge published">published</span> by a vendor, or <span class="badge modeled">modeled</span>. A result built from mixed inputs takes the weakest label.</p>
+    <p class="status" id="status"></p>
     <div id="error" class="error" role="alert" hidden></div>
     <div id="out">
-      <div class="headline" id="headline"></div>
+      <div class="hero" id="hero"></div>
       <div id="warnings"></div>
 
-      <h2>Where the extra GPUs come from</h2>
-      <figure class="chart">
-        <div id="waterfall"></div>
-        <figcaption id="waterfallCaption"></figcaption>
+      <figure class="chart ov" id="summaryFigure">
+        <div id="summaryChart"></div>
+        <figcaption id="summaryLegend" class="legend"></figcaption>
       </figure>
-      <details class="alt">
-        <summary>Waterfall as a table</summary>
-        <table id="waterfallTable"></table>
-      </details>
+      <div class="drivers ov" id="drivers"></div>
+      <p class="costline ov" id="costLine"></p>
+      <button type="button" class="link ov" id="toggleBreakdown" aria-expanded="false" aria-controls="breakdown">Show the full breakdown</button>
+
+      <section id="breakdown" class="breakdown">
+        <h2>Where the extra GPUs come from</h2>
+        <figure class="chart">
+          <div id="waterfall"></div>
+          <figcaption id="waterfallCaption"></figcaption>
+        </figure>
+        <details class="alt">
+          <summary>Waterfall as a table</summary>
+          <table id="waterfallTable"></table>
+        </details>
+      </section>
+
       <div class="actions">
-        <button type="button" id="exportPng" class="secondary">Download waterfall (PNG)</button>
-        <button type="button" id="exportCsv" class="secondary">Download border table (CSV)</button>
         <button type="button" id="copyLink">Copy link to this scenario</button>
+        <button type="button" id="exportPng" class="secondary eng">Download waterfall (PNG)</button>
+        <button type="button" id="exportCsv" class="secondary eng">Download border table (CSV)</button>
         <span id="copied" class="hint" role="status"></span>
       </div>
 
-      <h2>Per border</h2>
-      <div class="scroll"><table id="borderTable"></table></div>
+      <section class="eng">
+        <h2>Per border</h2>
+        <div class="scroll"><table id="borderTable"></table></div>
 
-      <h2>Cost and crossover</h2>
-      <div id="cost"></div>
+        <h2>Cost and crossover</h2>
+        <div id="cost"></div>
 
-      <details class="alt">
-        <summary>How this was sized</summary>
+        <h2>How this was sized</h2>
         <div id="explain"></div>
-      </details>
+      </section>
     </div>
 
     <aside class="cta">

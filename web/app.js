@@ -29,9 +29,20 @@ async function loadData() {
   return { gpus, models, throughput };
 }
 
-function badge(label, title) {
-  return `<span class="badge ${label}" title="${esc(title || label)}">${label}</span>`;
-}
+const LABEL_TEXT = {
+  measured: 'Measured in our benchmark',
+  published: 'Based on published vendor figures',
+  modeled: 'Modeled estimate',
+};
+
+const CAUSE_WHY = {
+  peaks: 'Each border sizes for its own busiest hour instead of sharing peaks.',
+  floor: 'Every border needs at least one full model copy, however small its demand.',
+  redundancy: 'Every border carries its own spare copy.',
+  rounding: 'Each border buys whole servers, even when it needs a fraction of one.',
+  models: 'Every fine-tuned variant is deployed in every border.',
+  caches: 'Smaller pools reuse fewer cached prompts, so each copy does less work.',
+};
 
 function options(select, items, value) {
   select.innerHTML = items.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(value) ? ' selected' : ''}>${esc(t)}</option>`).join('');
@@ -58,8 +69,8 @@ function writeForm() {
   options($('precision'), gpu.precisions.map((p) => [p, p]), s.precision);
 
   $('demandMode').value = s.demand.mode;
+  $('demandLabel').textContent = s.demand.mode === 'tokens' ? 'Demand (B tokens per day)' : 'Demand (requests per day)';
   $('demandValue').value = s.demand.mode === 'tokens' ? +(s.demand.tokensPerDay / 1e9).toPrecision(6) : s.demand.requestsPerDay;
-  options($('borderPreset'), [['', 'Choose a preset…'], ...BORDER_PRESETS.map((p) => [p.id, p.name])], '');
   writeBorders();
 
   const w = data.throughput.workloads.find((x) => x.id === s.workload);
@@ -103,7 +114,27 @@ function setOptional(id, value, presetValue) {
   $(id).placeholder = `${presetValue} (preset)`;
 }
 
+const bordersKey = (bs) => JSON.stringify(bs.map((b) => [b.name, b.tz ?? 0, b.share ?? 1, b.group || '']));
+
+function writeBorderSummary() {
+  const match = BORDER_PRESETS.find((p) => bordersKey(p.borders) === bordersKey(state.borders));
+  options($('borderPreset'), [...BORDER_PRESETS.map((p) => [p.id, p.name]), ...(match ? [] : [['custom', 'Custom']])], match ? match.id : 'custom');
+  const bs = state.borders;
+  const shares = E.normalizedShares(bs);
+  const equal = shares.every((x) => Math.abs(x - shares[0]) < 1e-9);
+  const big = shares.indexOf(Math.max(...shares));
+  const small = shares.indexOf(Math.min(...shares));
+  const tzs = bs.map((b) => b.tz || 0);
+  const lo = Math.min(...tzs);
+  const hi = Math.max(...tzs);
+  const utc = (h) => `UTC${h < 0 ? '−' : '+'}${Math.abs(h)}`;
+  const split = bs.length === 1 ? 'all demand' : equal ? 'equal split' : `${esc(bs[big].name)} ${pct(shares[big])} … ${esc(bs[small].name)} ${pct(shares[small])}`;
+  const zones = lo === hi ? utc(lo) : `${utc(lo)} to ${utc(hi).slice(3)}`;
+  $('borderSummary').innerHTML = `<strong>${bs.length} border${bs.length === 1 ? '' : 's'}</strong> · ${split} · ${zones}`;
+}
+
 function writeBorders() {
+  writeBorderSummary();
   const box = $('borders');
   box.innerHTML = state.borders.map((b, i) => `
     <div class="border" data-i="${i}">
@@ -120,8 +151,9 @@ function writeLevers() {
   const notes = Object.fromEntries((last?.levers || []).map((l) => [l.id, l]));
   $('levers').innerHTML = E.LEVERS.map((l) => {
     const n = notes[l.id];
-    const note = n ? (n.applied ? `${fmt(n.gpus)} GPUs. ${n.note || ''}` : n.note) : '';
-    return `<div class="lever"><label><input type="checkbox" data-lever="${l.id}"${state.levers[l.id] ? ' checked' : ''}>${esc(l.name)}</label>${note ? `<span class="note">${esc(note)}</span>` : ''}</div>`;
+    const save = n?.applied && n.gpus < 0 ? `<span class="save">−${fmt(-n.gpus)}</span>` : '';
+    const note = n ? (n.applied ? n.note || '' : n.note) : '';
+    return `<div class="lever"><label><input type="checkbox" data-lever="${l.id}"${state.levers[l.id] ? ' checked' : ''}>${esc(l.name)}${save}</label>${note ? `<span class="note eng">${esc(note)}</span>` : ''}</div>`;
   }).join('');
 }
 
@@ -213,23 +245,101 @@ function render() {
     ? `≈ ${compact(rpd)} requests/day at ${fmt(w.promptTokens + w.answerTokens)} tokens each (≈ ${compact(rpd / w.stepsPerTask)} ${w.stepsPerTask > 1 ? `tasks of ${w.stepsPerTask} steps` : 'tasks'})`
     : `≈ ${compact(rpd * (w.promptTokens + w.answerTokens))} tokens/day at ${fmt(w.promptTokens + w.answerTokens)} tokens per request`;
 
-  const L = r.labels;
-  const tipGpu = `Cheapest GPUs per copy that fits in memory; throughput: ${r.throughput.split.rule}`;
-  const power = (p) => `${fmt(p.it, 1)} kW IT${p.facility != null ? ` · ${fmt(p.facility, 1)} kW facility (PUE ${p.pue})` : ''}`;
+  writeBorderSummary();
+  renderStatus(r);
+  renderHero(r);
+  $('warnings').innerHTML = r.warnings.map((x) => `<div class="warn">${esc(x)}</div>`).join('');
   const after = r.levers.some((l) => l.applied);
-  $('headline').innerHTML = `
-    <div class="stat"><div class="k">GPUs with borders ${badge(L.gpus, tipGpu)}</div><div class="v">${fmt(r.bordered.gpus)}</div><div class="s">${fmt(r.bordered.units)} ${unitWord(r)} · ${pct(r.bordered.utilAvg)} avg used</div></div>
-    <div class="stat"><div class="k">One shared pool ${badge(L.gpus, tipGpu)}</div><div class="v">${fmt(r.shared.gpus)}</div><div class="s">${pct(r.shared.utilAvg)} avg used</div></div>
-    <div class="stat"><div class="k">Sovereignty tax ${badge(L.gpus, tipGpu)}</div><div class="v">+${fmt(r.tax.gpus)}</div><div class="s">+${pct(r.tax.pct)}${after ? ` · ${signed(r.afterLevers.taxGpus)} (${signed(r.afterLevers.taxPct, pct)}) after levers` : ''}</div></div>
-    <div class="stat"><div class="k">IT power with borders ${badge(L.power, 'Servers × kW per server from the GPU catalog')}</div><div class="v">${fmt(r.bordered.power.it, 1)} kW</div><div class="s">vs ${fmt(r.shared.power.it, 1)} kW shared${r.bordered.power.facility != null ? ` · ${fmt(r.bordered.power.facility, 1)} kW facility` : ''}</div></div>`;
   $('sticky').textContent = `Sovereignty tax: +${fmt(r.tax.gpus)} GPUs (+${pct(r.tax.pct)})${after ? ` · after levers ${signed(r.afterLevers.taxGpus)}` : ''}`;
 
-  $('warnings').innerHTML = r.warnings.map((x) => `<div class="warn">${esc(x)}</div>`).join('');
-
+  renderSummaryChart(r);
+  renderDrivers(r);
+  renderCostLine(r);
   renderWaterfall(r);
-  renderBorders(r, power);
+  renderBorders(r);
   renderCost(r);
   renderExplain(r);
+}
+
+function renderStatus(r) {
+  $('status').innerHTML = `<strong>${LABEL_TEXT[r.label]}</strong> · for planning, not a quote.${r.label === 'modeled' ? ' Throughput and hardware figures are modeled until benchmark results are added.' : ''}`;
+}
+
+function renderHero(r) {
+  const n = state.borders.length;
+  const after = r.levers.some((l) => l.applied);
+  const kw = (p) => `${fmt(p.it, 1)} kW`;
+  const sentence = r.tax.gpus === 0
+    ? `${n === 1 ? 'One border is the baseline' : `These ${n} borders cost nothing extra`}: <b>${fmt(r.bordered.gpus)} GPUs</b> and ${kw(r.bordered.power)}, the same as one shared pool.`
+    : `${n} borders need <b>${fmt(r.bordered.gpus)} GPUs</b> and <b>${kw(r.bordered.power)}</b>. One shared pool serving the same demand needs <b>${fmt(r.shared.gpus)} GPUs</b> and ${kw(r.shared.power)}.${after ? ` The levers you switched on bring it to <b>${fmt(r.afterLevers.gpus)} GPUs</b>.` : ''}`;
+  const tile = (k, v, sub) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
+  $('hero').innerHTML = `
+    <div class="what">Sovereignty tax</div>
+    <div class="tax">+${fmt(r.tax.gpus)} GPUs${r.tax.gpus ? `<small>+${pct(r.tax.pct)} vs one shared pool</small>` : ''}</div>
+    <p class="sentence">${sentence}</p>
+    <div class="tiles">
+      ${tile(`With ${n} border${n === 1 ? '' : 's'}`, `${fmt(r.bordered.gpus)} GPUs`, `${fmt(r.bordered.units)} ${unitWord(r)} · ${kw(r.bordered.power)} · ${pct(r.bordered.utilAvg)} used on average`)}
+      ${tile('One shared pool', `${fmt(r.shared.gpus)} GPUs`, `${kw(r.shared.power)} · ${pct(r.shared.utilAvg)} used on average`)}
+      ${after
+        ? tile('After levers', `${fmt(r.afterLevers.gpus)} GPUs`, `${kw(r.afterLevers.power)} · tax ${signed(r.afterLevers.taxGpus)} GPUs`)
+        : tile('After levers', '–', 'Switch on a lever to win GPUs back')}
+    </div>`;
+}
+
+/** Overview chart: three bars, each split into the shared-pool need, the tax, and what the levers win back. */
+function renderSummaryChart(r) {
+  const S = r.shared.gpus;
+  const B = r.bordered.gpus;
+  const A = r.afterLevers.gpus;
+  const after = r.levers.some((l) => l.applied);
+  const rows = [
+    { label: 'One shared pool', base: S, tax: 0, won: 0, total: S },
+    { label: `With ${state.borders.length} border${state.borders.length === 1 ? '' : 's'}`, base: S, tax: B - S, won: 0, total: B },
+  ];
+  if (after) rows.push({ label: 'After levers', base: Math.min(A, S), tax: Math.max(0, A - S), won: B - A, total: A });
+  // Drawn at the container's real width so labels stay legible on a phone.
+  const W = Math.max(300, Math.min(900, $('summaryChart').clientWidth || 860));
+  const rowH = 46;
+  const m = { l: W < 520 ? 118 : 150, r: 52, t: 8, b: 8 };
+  const H = m.t + m.b + rows.length * rowH;
+  const max = Math.max(1, B);
+  const xx = (v) => m.l + ((W - m.l - m.r) * v) / max;
+  const c = { base: cssVar('--base'), tax: cssVar('--cause'), won: cssVar('--lever'), text: cssVar('--text'), muted: cssVar('--muted'), bg: cssVar('--bg') };
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(rows.map((x) => `${x.label}: ${fmt(x.total)} GPUs`).join('; '))}" font-family="system-ui, sans-serif"><rect width="${W}" height="${H}" fill="${c.bg}"/>`;
+  rows.forEach((row, i) => {
+    const y = m.t + i * rowH + 8;
+    const h = rowH - 16;
+    svg += `<text x="${m.l - 10}" y="${y + h / 2 + 5}" text-anchor="end" font-size="${W < 520 ? 12 : 14}" fill="${c.text}">${esc(row.label)}</text>`;
+    svg += `<rect x="${xx(0)}" y="${y}" width="${Math.max(1, xx(row.base) - xx(0))}" height="${h}" fill="${c.base}" rx="3"/>`;
+    if (row.tax > 0) svg += `<rect x="${xx(row.base)}" y="${y}" width="${xx(row.base + row.tax) - xx(row.base)}" height="${h}" fill="${c.tax}" rx="3"/>`;
+    if (row.won > 0) svg += `<rect x="${xx(row.total) + 1}" y="${y + 1}" width="${Math.max(0, xx(row.total + row.won) - xx(row.total) - 2)}" height="${h - 2}" fill="none" stroke="${c.won}" stroke-width="2" stroke-dasharray="5 4" rx="3"/>`;
+    svg += `<text x="${xx(row.total + row.won) + 10}" y="${y + h / 2 + 5}" font-size="15" font-weight="700" fill="${c.text}">${fmt(row.total)}</text>`;
+  });
+  $('summaryChart').innerHTML = svg + '</svg>';
+  const key = (color, text, outline) => `<span><i style="${outline ? `border:2px dashed ${color};width:8px;height:8px` : `background:${color}`}"></i>${text}</span>`;
+  $('summaryLegend').innerHTML = key(c.base, 'What one shared pool needs') + (B > S ? key(c.tax, 'Sovereignty tax') : '') + (after ? key(c.won, 'Won back by levers', true) : '');
+}
+
+function renderDrivers(r) {
+  const causes = r.causes.filter((x) => x.gpus > 0).sort((a, b) => b.gpus - a.gpus).slice(0, 3);
+  const wins = r.levers.filter((l) => l.applied && l.gpus < 0).sort((a, b) => a.gpus - b.gpus);
+  if (!causes.length) {
+    $('drivers').innerHTML = '';
+    return;
+  }
+  $('drivers').innerHTML = `<h3>What drives the tax</h3><ol>${causes.map((x) => `<li><span class="n">+${fmt(x.gpus)}</span> ${esc(x.name)}. <span class="hint">${esc(CAUSE_WHY[x.id])}</span></li>`).join('')}</ol>
+    ${wins.length ? `<p>Biggest win back: <strong>${esc(wins[0].name.toLowerCase())}</strong>, <span class="n">−${fmt(-wins[0].gpus)}</span> GPUs.</p>` : ''}`;
+}
+
+function renderCostLine(r) {
+  const c = r.cost;
+  if (!c) {
+    $('costLine').textContent = '';
+    return;
+  }
+  const x = c.crossover;
+  const cross = !x ? 'Private doesn’t beat the API in the range checked.' : x.belowRange ? 'Private wins at any volume checked.' : `Private wins above about ${compact(x.tokensPerMonth)} tokens a month.`;
+  $('costLine').innerHTML = `At ${c.examplePrices ? 'example ' : ''}prices, private capacity with borders runs about <b>${money(c.privateBordered, c.currency)}</b> a month, against ${money(c.api, c.currency)} for a public API on the same tokens. ${cross}${c.examplePrices ? ' <span class="hint">(Example prices, not quotes.)</span>' : ''}`;
 }
 
 function unitWord(r) {
@@ -305,7 +415,7 @@ function renderWaterfall(r) {
   });
   svg += `<text x="${m.l}" y="14" font-size="11" fill="${colors.muted}">GPUs</text></svg>`;
   $('waterfall').innerHTML = svg;
-  $('waterfallCaption').textContent = `From one shared pool of ${fmt(r.shared.gpus)} GPUs up through each cause to ${fmt(r.bordered.gpus)} GPUs with borders${r.levers.some((l) => state.levers[l.id]) ? `, then down through the levers you switched on to ${fmt(r.afterLevers.gpus)}` : ''}. Every step is ${r.labels.gpus}.`;
+  $('waterfallCaption').textContent = `From one shared pool of ${fmt(r.shared.gpus)} GPUs up through each cause to ${fmt(r.bordered.gpus)} GPUs with borders${r.levers.some((l) => state.levers[l.id]) ? `, then down through the levers you switched on to ${fmt(r.afterLevers.gpus)}` : ''}.`;
   $('waterfallTable').innerHTML = `<thead><tr><th>Step</th><th>GPUs</th><th>Running total</th><th>Note</th></tr></thead><tbody>${bars.map((b) => `<tr><td>${esc(b.name)}</td><td>${b.kind === 'total' ? '' : (b.delta > 0 ? '+' : '') + fmt(b.delta)}</td><td>${fmt(b.to)}</td><td>${esc(b.note || '')}</td></tr>`).join('')}</tbody>`;
 }
 
@@ -334,7 +444,7 @@ function renderBorders(r) {
   const cols = Object.keys(rows[0]);
   const cell = (k, v) => (k.includes('share') || k.includes('utilization') ? pct(v, k.includes('utilization') && v < 0.1 ? 1 : 0) : k.includes('kW') ? fmt(v, 1) : typeof v === 'number' ? fmt(v) : esc(v));
   const total = { Border: 'Total', 'Demand share': 1, Copies: r.borders.reduce((a, b) => a + b.copies, 0), GPUs: r.bordered.gpus, [cols[4]]: r.bordered.units, 'Avg utilization': r.bordered.utilAvg, 'Peak utilization': r.bordered.utilPeak, 'IT kW': r.bordered.power.it, 'Facility kW': r.bordered.power.facility };
-  $('borderTable').innerHTML = `<caption class="hint">Per-border sizing ${badge(r.labels.gpus)}. Copies include ${state.advanced.redundancy} spare${state.advanced.redundancy === 1 ? '' : 's'} per ${r.throughput && state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? 'variant per ' : ''}border.</caption>
+  $('borderTable').innerHTML = `<caption class="hint">Copies include ${state.advanced.redundancy} spare${state.advanced.redundancy === 1 ? '' : 's'} per ${r.throughput && state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? 'variant per ' : ''}border.</caption>
     <thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((row) => `<tr>${cols.map((c) => `<td>${cell(c, row[c])}</td>`).join('')}</tr>`).join('')}</tbody>
     <tfoot><tr>${cols.map((c) => `<td>${cell(c, total[c])}</td>`).join('')}</tr></tfoot>`;
@@ -362,7 +472,7 @@ function renderCost(r) {
       : `Private capacity with these borders becomes cheaper above about <strong>${compact(x.tokensPerMonth)} tokens per month</strong> (this scenario: ${compact(c.tokensPerMonth)}).`;
   $('cost').innerHTML = `
     ${c.examplePrices ? '<p class="warn">Example prices, for illustration only. They are not quotes or vendor list prices; enter your own in Advanced.</p>' : ''}
-    <table><thead><tr><th>Monthly cost ${badge('modeled', 'GPUs × price per GPU-hour × 730 h; API: monthly tokens × entered prices')}</th><th>${esc(c.currency)}</th></tr></thead><tbody>
+    <table><thead><tr><th>Monthly cost</th><th>${esc(c.currency)}</th></tr></thead><tbody>
       <tr><td>Private, with borders</td><td>${money(c.privateBordered, c.currency)}</td></tr>
       <tr><td>Private, one shared pool</td><td>${money(c.privateShared, c.currency)}</td></tr>
       ${r.levers.some((l) => l.applied) ? `<tr><td>Private, after levers</td><td>${money(c.privateAfterLevers, c.currency)}</td></tr>` : ''}
@@ -376,18 +486,26 @@ function renderExplain(r) {
   const tp = r.throughput.pooled;
   const w = r.workload;
   $('explain').innerHTML = `<dl>
-    <dt>GPUs per model copy: ${r.g === r.gShared ? r.g : `${r.g} in each border, ${r.gShared} in the shared pool`} ${badge('modeled', 'Memory formula; validated by the H100 footprint test once it lands')}</dt>
+    <dt>GPUs per model copy: ${r.g === r.gShared ? r.g : `${r.g} in each border, ${r.gShared} in the shared pool`}</dt>
     <dd>${state.advanced.gpusPerCopy && state.advanced.gpusPerCopy !== 'auto'
       ? `Pinned to ${r.g} in Advanced.`
       : `Every size of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${w.targetConcurrency} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU is sized, and the shared pool and the borders each keep their cheapest:`}</dd>
     ${r.tpOptions.length > 1 ? `<dd><table><thead><tr><th>GPUs per copy</th><th>Shared pool</th><th>With borders</th></tr></thead><tbody>${r.tpOptions.map((o) => `<tr><td>${o.g}</td><td>${fmt(o.shared)}${o.g === r.gShared ? ' ✓' : ''}</td><td>${fmt(o.bordered)}${o.g === r.g ? ' ✓' : ''}</td></tr>`).join('')}</tbody></table></dd>` : ''}
-    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${r.g}-GPU border copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${r.gShared}-GPU shared copy`} ${badge(r.labels.throughput, t.rule)}</dt>
+    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${r.g}-GPU border copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${r.gShared}-GPU shared copy`}</dt>
     <dd>${esc(t.rule)}. At ${t.concurrency} concurrent requests: about ${fmt(t.perUserTokPerSec)} tokens/s per user (target ${w.outputTokensPerSecPerUser}), about ${fmt(t.ttftMs)} ms unloaded time to first token (target ${w.ttftMsP95} ms p95). Cache hit ${pct(r.hit.pooled)} pooled, ${pct(r.hit.split)} split.${t.adapterFactor ? ` Adapters cost ${pct(1 - t.adapterFactor, 1)} of throughput.` : ''}</dd>
     <dt>Copies per border</dt>
     <dd>max(1, ⌈peak × (1 + ${pct(state.advanced.headroom)}) ÷ R⌉) + ${state.advanced.redundancy}, then × GPUs per copy${state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? ` for each of ${state.advanced.variants} variants` : ''}, rounded up to ${r.unit} GPU${r.unit === 1 ? '' : 's'}.</dd>
+    <dt>Data labels</dt>
+    <dd>Results take the weakest label of their inputs: ${LABEL_TEXT[r.label].toLowerCase()}. GPU (${esc(r.gpu.name)}): ${esc(gpuLabels(r.gpu))}. Model: ${esc(r.model.label)}. Throughput: ${esc(r.labels.throughput)}. Workload shape and cache hit rates: ${esc(r.workload.label)}. Prices: example values unless you entered your own.</dd>
     <dt>Shared pool</dt>
     <dd>The same steps once for total demand, at the peak of the summed hourly curve (${fmt(r.borders.reduce((a, b) => a + b.peakRps, 0), 2)} req/s if peaks lined up, ${fmt(E.buildContext(state, data).pooledPeak, 2)} req/s actually).</dd>
   </dl>`;
+}
+
+function gpuLabels(g) {
+  const pub = Object.entries(g.labels || {}).filter(([, l]) => l === 'published').map(([k]) => k);
+  const names = { memoryGB: 'memory', memoryBandwidthTBs: 'bandwidth', tdpW: 'TDP', unitPowerKW: 'server power', precisions: 'precisions' };
+  return pub.length ? `${g.label}, except ${pub.map((k) => names[k] || k).join(', ')} (published)` : g.label;
 }
 
 // ---------------------------------------------------------------------------
@@ -441,10 +559,20 @@ function onChange(e) {
   render();
 }
 
+function applyView() {
+  const view = state.ui?.view === 'detail' ? 'detail' : 'overview';
+  document.body.dataset.view = view;
+  document.querySelectorAll('.view-toggle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+  const open = !!state.ui?.breakdown;
+  $('breakdown').classList.toggle('open', open);
+  $('toggleBreakdown').setAttribute('aria-expanded', String(open));
+  $('toggleBreakdown').textContent = open ? 'Hide the full breakdown' : 'Show the full breakdown';
+}
+
 function renderDataVersion() {
   const f = [data.gpus, data.models, data.throughput];
   const updated = f.map((x) => x.updated).sort().pop();
-  $('dataVersion').innerHTML = `Data version: GPUs ${esc(data.gpus.version)}, models ${esc(data.models.version)}, throughput ${esc(data.throughput.version)} · last updated ${esc(updated)} · <a href="../CHANGELOG.md">changelog</a>. Until the benchmark sweep is published, throughput and GPU values are labeled modeled.`;
+  $('dataVersion').innerHTML = `Data version: GPUs ${esc(data.gpus.version)}, models ${esc(data.models.version)}, throughput ${esc(data.throughput.version)} · last updated ${esc(updated)} · <a href="../CHANGELOG.md">changelog</a>. `;
 }
 
 async function main() {
@@ -457,8 +585,21 @@ async function main() {
   }
   state = decodeScenario(location.hash) || defaultScenario();
   renderDataVersion();
+  applyView();
   writeForm();
   render();
+
+  document.querySelectorAll('.view-toggle button').forEach((b) => b.addEventListener('click', () => {
+    state.ui.view = b.dataset.view;
+    if (state.ui.view === 'detail') $('borderEditor').open = true;
+    applyView();
+    render();
+  }));
+  $('toggleBreakdown').addEventListener('click', () => {
+    state.ui.breakdown = !state.ui.breakdown;
+    applyView();
+    render();
+  });
 
   const form = $('inputs');
   form.addEventListener('change', onChange);
@@ -467,7 +608,7 @@ async function main() {
   });
   form.addEventListener('submit', (e) => e.preventDefault());
   $('borderPreset').addEventListener('change', (e) => {
-    if (!e.target.value) return;
+    if (!e.target.value || e.target.value === 'custom') return;
     state = applyBorderPreset(state, e.target.value);
     writeForm();
     render();
@@ -486,7 +627,7 @@ async function main() {
     render();
   });
   $('reset').addEventListener('click', () => {
-    state = defaultScenario();
+    state = { ...defaultScenario(), ui: state.ui };
     writeForm();
     render();
   });
@@ -509,10 +650,16 @@ async function main() {
       $('copied').textContent = 'Copy the address bar to share this scenario.';
     }
   });
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => last && !last.error && renderSummaryChart(last), 120);
+  });
   window.addEventListener('hashchange', () => {
     const s = decodeScenario(location.hash);
     if (s && JSON.stringify(s) !== JSON.stringify(state)) {
       state = s;
+      applyView();
       writeForm();
       render();
     }

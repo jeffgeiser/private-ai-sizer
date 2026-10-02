@@ -2,6 +2,15 @@
 
 Data files and the engine are versioned separately. Data versions are `YYYY.MINOR.PATCH`; the engine follows the package version.
 
+## Page 0.3.0 — 2026-10-02
+
+- **Two views.**
+  - **Overview** (default) shows the minimum inputs: workload, model, GPU, demand, a border preset with a one-line summary, and the levers. Results are the tax as one number, a three-bar chart, the top causes in plain words, and a one-line cost comparison; the full waterfall opens on request.
+  - **Engineering detail** shows precision, the advanced assumptions, the waterfall, the per-border table, the cost table, the sizing explanation and the exports.
+  - The open view travels with the share link.
+- **One data label.** A single line ("Modeled estimate · for planning, not a quote") replaces the badges on each number. Engineering detail lists the label behind each input.
+- **Border editor:** collapsed behind "Edit borders". The preset menu shows "Custom" once the borders have been edited.
+
 ## Engine 0.2.0 — 2026-10-02
 
 - **GPUs per copy is now the cheapest size that fits, not the smallest.** Every tensor-parallel size that fits in memory is sized. The shared pool and the bordered deployment each keep the size that needs the fewest GPUs, with ties going to the smaller size.

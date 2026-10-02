@@ -28,6 +28,18 @@ node scripts/serve.js    # then open http://localhost:8080/web/
 
 The page imports `../src/*.js` and fetches `../data/*.json`, so any static host that serves the repo root works.
 
+The page has two views, and the share link remembers which one is open:
+
+- **Overview** (default): for leaders.
+  - Inputs: workload, model, GPU, demand, a border preset with a one-line summary (edit the borders only if you want), and the levers.
+  - Results: the tax as one number, a three-bar chart (shared pool, with borders, after levers), the top causes in plain words, and a one-line cost comparison. The full waterfall is one click away.
+- **Engineering detail**: everything.
+  - Precision and the advanced assumptions.
+  - The full waterfall, the per-border table, the cost table, and how the result was sized.
+  - PNG and CSV export.
+
+The results show one data label for the whole page, the weakest label of the inputs, instead of a badge on each number. Engineering detail lists the label behind each input.
+
 ## Using the engine
 
 ```js
