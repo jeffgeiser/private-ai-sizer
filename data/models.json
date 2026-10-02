@@ -1,0 +1,60 @@
+{
+  "kind": "model-catalog",
+  "version": "2026.10.0",
+  "updated": "2026-10-02",
+  "notes": "Architecture values from each model's published config/model card. Parameter counts are total and active (active differs only for mixture-of-experts models).",
+  "models": [
+    {
+      "id": "llama-3.1-8b",
+      "name": "8B dense (Llama 3.1 8B)",
+      "totalParamsB": 8.03,
+      "activeParamsB": 8.03,
+      "layers": 32,
+      "kvHeads": 8,
+      "headDim": 128,
+      "defaultContext": 131072,
+      "benchmarked": true,
+      "label": "published",
+      "source": "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
+    },
+    {
+      "id": "qwen3-32b",
+      "name": "~30B dense (Qwen3 32B)",
+      "totalParamsB": 32.8,
+      "activeParamsB": 32.8,
+      "layers": 64,
+      "kvHeads": 8,
+      "headDim": 128,
+      "defaultContext": 32768,
+      "benchmarked": false,
+      "label": "published",
+      "source": "https://huggingface.co/Qwen/Qwen3-32B"
+    },
+    {
+      "id": "llama-3.3-70b",
+      "name": "70B dense (Llama 3.3 70B)",
+      "totalParamsB": 70.6,
+      "activeParamsB": 70.6,
+      "layers": 80,
+      "kvHeads": 8,
+      "headDim": 128,
+      "defaultContext": 131072,
+      "benchmarked": true,
+      "label": "published",
+      "source": "https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct"
+    },
+    {
+      "id": "qwen3-235b-a22b",
+      "name": "Large MoE (Qwen3 235B-A22B)",
+      "totalParamsB": 235,
+      "activeParamsB": 22,
+      "layers": 94,
+      "kvHeads": 4,
+      "headDim": 128,
+      "defaultContext": 32768,
+      "benchmarked": false,
+      "label": "published",
+      "source": "https://huggingface.co/Qwen/Qwen3-235B-A22B"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "kind": "throughput-table",
+  "version": "2026.10.0",
+  "updated": "2026-10-02",
+  "notes": "Workload shapes, scaling coefficients and measured or published throughput rows. Until the H100 benchmark sweep lands, rows is empty and every throughput is modeled from the scaling rules below. Measured rows replace the model for their exact model, GPU, precision and workload.",
+  "anchorGpu": "h100-sxm",
+  "workloads": [
+    {
+      "id": "chat",
+      "name": "Chat assistant",
+      "promptTokens": 1500,
+      "answerTokens": 350,
+      "stepsPerTask": 1,
+      "ttftMsP95": 1000,
+      "outputTokensPerSecPerUser": 30,
+      "targetConcurrency": 64,
+      "cacheHitPooled": 0.3,
+      "cacheHitSplit": 0.2,
+      "label": "modeled",
+      "source": "Assumption pending prefix-cache replay; see README"
+    },
+    {
+      "id": "agent",
+      "name": "Agent",
+      "promptTokens": 6000,
+      "answerTokens": 400,
+      "stepsPerTask": 8,
+      "ttftMsP95": 2000,
+      "outputTokensPerSecPerUser": 30,
+      "targetConcurrency": 64,
+      "cacheHitPooled": 0.6,
+      "cacheHitSplit": 0.45,
+      "label": "modeled",
+      "source": "Assumption pending prefix-cache replay; see README"
+    },
+    {
+      "id": "voice",
+      "name": "Voice",
+      "promptTokens": 1200,
+      "answerTokens": 120,
+      "stepsPerTask": 1,
+      "ttftMsP95": 300,
+      "outputTokensPerSecPerUser": 50,
+      "targetConcurrency": 16,
+      "cacheHitPooled": 0.4,
+      "cacheHitSplit": 0.3,
+      "label": "modeled",
+      "source": "Assumption pending prefix-cache replay; see README"
+    },
+    {
+      "id": "batch",
+      "name": "Batch summarization",
+      "promptTokens": 8000,
+      "answerTokens": 600,
+      "stepsPerTask": 1,
+      "ttftMsP95": 60000,
+      "outputTokensPerSecPerUser": 5,
+      "targetConcurrency": 128,
+      "cacheHitPooled": 0.1,
+      "cacheHitSplit": 0.1,
+      "label": "modeled",
+      "source": "Assumption; batch prompts rarely share prefixes"
+    }
+  ],
+  "scaling": {
+    "label": "modeled",
+    "source": "Roofline model calibrated to H100; replace coefficients with the H100 benchmark sweep",
+    "prefillComputeEfficiency": 0.4,
+    "decodeBandwidthEfficiency": 0.7,
+    "memoryFitFraction": 0.9,
+    "tensorParallelEfficiency": { "1": 1.0, "2": 0.95, "4": 0.9, "8": 0.85 },
+    "kvBytesByPrecision": { "BF16": 2, "FP8": 1, "FP4": 1 },
+    "adapterThroughputFactor": { "1": 0.97, "10": 0.92, "50": 0.85, "100": 0.8 }
+  },
+  "rows": []
+}

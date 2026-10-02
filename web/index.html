@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sovereignty Tax Calculator</title>
+<meta name="description" content="Size private inference capacity across borders and see what each border costs compared with one shared pool. Runs entirely in your browser.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Sovereignty Tax Calculator</h1>
+  <p class="lede">How many more GPUs, and how much more power, do your borders need than one shared pool, and how much of that can you win back? Everything runs in your browser; nothing you enter leaves this page.</p>
+</header>
+
+<main class="layout">
+  <form id="inputs" class="inputs" aria-label="Inputs" autocomplete="off">
+    <fieldset>
+      <legend>Basic</legend>
+      <label>Workload preset <select id="workload"></select></label>
+      <label>Model <select id="model"></select></label>
+      <div id="customModel" class="sub" hidden>
+        <label>Total parameters (B) <input id="cmTotal" type="number" min="0.1" step="0.1" value="70"></label>
+        <label>Active parameters (B) <input id="cmActive" type="number" min="0.1" step="0.1" value="70"></label>
+        <label>Layers <input id="cmLayers" type="number" min="1" step="1" value="80"></label>
+        <label>KV heads <input id="cmKv" type="number" min="1" step="1" value="8"></label>
+        <label>Head dimension <input id="cmHead" type="number" min="1" step="1" value="128"></label>
+      </div>
+      <label>GPU <select id="gpu"></select></label>
+      <label>Precision <select id="precision"></select></label>
+      <div class="row">
+        <label>Demand <input id="demandValue" type="number" min="0" step="any"></label>
+        <label>Unit
+          <select id="demandMode">
+            <option value="tokens">B tokens per day</option>
+            <option value="requests">Requests per day</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint" id="demandHint"></p>
+      <label>Border preset <select id="borderPreset"></select></label>
+      <div id="borders" class="borders" role="group" aria-label="Borders"></div>
+      <button type="button" id="addBorder" class="secondary">Add border</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Levers</legend>
+      <div id="levers"></div>
+    </fieldset>
+
+    <details id="advanced">
+      <summary>Advanced assumptions</summary>
+      <fieldset>
+        <label>Data allowed to leave (%) <input id="leaveShare" type="number" min="0" max="100" step="1"></label>
+        <label>Redundancy
+          <select id="redundancy"><option value="0">N+0</option><option value="1">N+1</option><option value="2">N+2</option></select>
+        </label>
+        <label>Time to first token, p95 (ms) <input id="ttft" type="number" min="1" step="1"></label>
+        <label>Output speed per user (tokens/s) <input id="speed" type="number" min="1" step="1"></label>
+        <label>Target concurrency per copy <input id="concurrency" type="number" min="1" step="1"></label>
+        <label>Headroom (%) <input id="headroom" type="number" min="0" max="100" step="1"></label>
+        <label>Demand shape
+          <select id="shape"><option value="business">Business hours (synthetic)</option><option value="flat">Flat</option><option value="custom">Custom hourly values</option></select>
+        </label>
+        <div id="customShapeBox" class="sub" hidden>
+          <label>24 hourly values, local time, comma separated <textarea id="customShape" rows="2"></textarea></label>
+          <label>Or load an hourly CSV (read locally, never uploaded) <input id="shapeFile" type="file" accept=".csv,text/csv,text/plain"></label>
+        </div>
+        <label>Purchase unit
+          <select id="purchaseUnit"><option value="unit">Whole server or rack</option><option value="gpu">Single GPU (fractional)</option><option value="custom">Custom</option></select>
+        </label>
+        <label id="customUnitBox" hidden>GPUs per purchase unit <input id="customUnit" type="number" min="1" step="1"></label>
+        <label>GPUs per model copy
+          <select id="gpusPerCopy"><option value="auto">Auto (memory fit)</option><option>1</option><option>2</option><option>4</option><option>8</option></select>
+        </label>
+        <div class="row">
+          <label>Fine-tuned variants <input id="variants" type="number" min="1" max="100" step="1"></label>
+          <label>Served as
+            <select id="variantMode"><option value="separate">Separate deployments</option><option value="adapters">Adapters on one base</option></select>
+          </label>
+        </div>
+        <div class="row">
+          <label>Cache hit, pooled (%) <input id="hitPooled" type="number" min="0" max="100" step="1"></label>
+          <label>Cache hit, split (%) <input id="hitSplit" type="number" min="0" max="100" step="1"></label>
+        </div>
+        <label>Right-size target model <select id="rightSize"></select></label>
+        <div class="row">
+          <label>kW per server or rack <input id="kw" type="number" min="0" step="0.1"></label>
+          <label>PUE (optional) <input id="pue" type="number" min="1" step="0.01" placeholder="none"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Prices (cost view only)</legend>
+        <p class="hint" id="priceNote"></p>
+        <div class="row">
+          <label>Currency <input id="currency" type="text" maxlength="4"></label>
+          <label>Private, per GPU-hour <input id="gpuHour" type="number" min="0" step="0.01"></label>
+        </div>
+        <div class="row">
+          <label>API, per M input tokens <input id="apiIn" type="number" min="0" step="0.01"></label>
+          <label>API, per M output tokens <input id="apiOut" type="number" min="0" step="0.01"></label>
+        </div>
+      </fieldset>
+      <button type="button" id="reset" class="secondary">Reset to defaults</button>
+    </details>
+  </form>
+
+  <section class="results" aria-label="Results" aria-live="polite">
+    <p class="disclaimer"><strong>Planning estimate, not a quote.</strong> Every number carries a badge: <span class="badge measured">measured</span> in our benchmark, <span class="badge published">published</span> by a vendor, or <span class="badge modeled">modeled</span>. A result built from mixed inputs takes the weakest label.</p>
+    <div id="error" class="error" role="alert" hidden></div>
+    <div id="out">
+      <div class="headline" id="headline"></div>
+      <div id="warnings"></div>
+
+      <h2>Where the extra GPUs come from</h2>
+      <figure class="chart">
+        <div id="waterfall"></div>
+        <figcaption id="waterfallCaption"></figcaption>
+      </figure>
+      <details class="alt">
+        <summary>Waterfall as a table</summary>
+        <table id="waterfallTable"></table>
+      </details>
+      <div class="actions">
+        <button type="button" id="exportPng" class="secondary">Download waterfall (PNG)</button>
+        <button type="button" id="exportCsv" class="secondary">Download border table (CSV)</button>
+        <button type="button" id="copyLink">Copy link to this scenario</button>
+        <span id="copied" class="hint" role="status"></span>
+      </div>
+
+      <h2>Per border</h2>
+      <div class="scroll"><table id="borderTable"></table></div>
+
+      <h2>Cost and crossover</h2>
+      <div id="cost"></div>
+
+      <details class="alt">
+        <summary>How this was sized</summary>
+        <div id="explain"></div>
+      </details>
+    </div>
+
+    <aside class="cta">
+      <p>Want measured numbers instead of modeled ones? Run the same tests on your own workloads in the <a href="https://www.digitalrealty.com/" rel="noopener">Digital Realty Innovation Lab</a>.</p>
+    </aside>
+    <footer class="data" id="dataVersion"></footer>
+  </section>
+</main>
+
+<div class="sticky" id="sticky" aria-hidden="true"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

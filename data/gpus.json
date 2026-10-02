@@ -1,0 +1,290 @@
+{
+  "kind": "gpu-catalog",
+  "version": "2026.10.0",
+  "updated": "2026-10-02",
+  "notes": "Built 2026-10-02. WebFetch was egress-blocked for every domain tried (nvidia.com, amd.com, docs/resources.nvidia.com, lenovopress, wikipedia), so no page could be fetched directly. Each vendor figure was cross-checked against web-search excerpts of the vendor page given in source. Because none were fetched, every record is labeled modeled. Per-field labels mark values that are estimates even beyond that (server power derived from board power, GB300 rack power, AMD softwareEfficiency default). Dense TFLOPS = vendor sparse figure / 2 unless the vendor gives a dense figure. Platform per-GPU values = platform total / GPU count.",
+  "gpus": [
+    {
+      "id": "h100-sxm",
+      "name": "NVIDIA H100 SXM",
+      "vendor": "NVIDIA",
+      "memoryGB": 80,
+      "memoryBandwidthTBs": 3.35,
+      "precisions": [
+        "BF16",
+        "FP8"
+      ],
+      "denseTflops": {
+        "BF16": 989.5,
+        "FP8": 1979
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 10.2,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {},
+      "source": "https://www.nvidia.com/en-us/data-center/h100/",
+      "sources": {
+        "unitPowerKW": "https://i.dell.com/sites/csdocuments/App-Merchandizing_Documents/en/us/nvidia-dgx-h100-datasheet.pdf"
+      },
+      "notes": "Datasheet lists BF16 1,979 and FP8 3,958 TFLOPS with sparsity; halved to dense. Power = DGX H100 10.2 kW max. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "h200-sxm",
+      "name": "NVIDIA H200 SXM",
+      "vendor": "NVIDIA",
+      "memoryGB": 141,
+      "memoryBandwidthTBs": 4.8,
+      "precisions": [
+        "BF16",
+        "FP8"
+      ],
+      "denseTflops": {
+        "BF16": 989.5,
+        "FP8": 1979
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 10.2,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {},
+      "source": "https://www.nvidia.com/en-us/data-center/h200/",
+      "sources": {
+        "unitPowerKW": "https://resources.nvidia.com/en-us-dgx-systems/dgx-h200-datasheet"
+      },
+      "notes": "Datasheet lists BF16 1,979 and FP8 3,958 TFLOPS with sparsity; halved to dense. Power = DGX H200 10.2 kW max (the custom-thermal DGX H200 variant is rated higher). Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "b200",
+      "name": "NVIDIA B200 (HGX/DGX B200)",
+      "vendor": "NVIDIA",
+      "memoryGB": 180,
+      "memoryBandwidthTBs": 8.0,
+      "precisions": [
+        "BF16",
+        "FP8",
+        "FP4"
+      ],
+      "denseTflops": {
+        "BF16": 2250,
+        "FP8": 4500,
+        "FP4": 9000
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 14.3,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {},
+      "source": "https://www.nvidia.com/en-us/data-center/dgx-b200/",
+      "sources": {
+        "denseTflops": "https://www.nvidia.com/en-us/data-center/hgx/"
+      },
+      "notes": "Per-GPU = platform/8: 1,440 GB and 64 TB/s across 8 GPUs. HGX B200 lists FP4 144|72 PF (sparse|dense), FP8 72 PF sparse, BF16 36 PF sparse; dense per GPU = FP4 72/8, FP8 36/8, BF16 18/8. Power = DGX B200 ~14.3 kW max. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "b300",
+      "name": "NVIDIA B300 (HGX/DGX B300)",
+      "vendor": "NVIDIA",
+      "memoryGB": 288,
+      "memoryBandwidthTBs": 8.0,
+      "precisions": [
+        "BF16",
+        "FP8",
+        "FP4"
+      ],
+      "denseTflops": {
+        "BF16": 2250,
+        "FP8": 4500,
+        "FP4": 13500
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 14.5,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {},
+      "source": "https://www.nvidia.com/en-us/data-center/dgx-b300/",
+      "sources": {
+        "denseTflops": "https://www.nvidia.com/en-us/data-center/hgx/"
+      },
+      "notes": "Memory = DGX B300 2.3 TB / 8 (8 x 288 GB); note the HGX B300 page lists 2.1 TB total (~270 GB/GPU), so OEM HGX builds may be lower. Bandwidth up to 8 TB/s per GPU. HGX B300 lists FP4 144|108 PF (sparse|dense), FP8 72 PF sparse, BF16 36 PF sparse; dense per GPU = FP4 108/8, FP8 36/8, BF16 18/8. Power = DGX B300 14.5 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "gb300-nvl72",
+      "name": "NVIDIA GB300 NVL72",
+      "vendor": "NVIDIA",
+      "memoryGB": 278,
+      "memoryBandwidthTBs": 8.0,
+      "precisions": [
+        "BF16",
+        "FP8",
+        "FP4"
+      ],
+      "denseTflops": {
+        "BF16": 2500,
+        "FP8": 5000,
+        "FP4": 15000
+      },
+      "purchaseUnit": "rack",
+      "gpusPerUnit": 72,
+      "unitPowerKW": 135,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {
+        "unitPowerKW": "modeled"
+      },
+      "source": "https://www.nvidia.com/en-us/data-center/gb300-nvl72/",
+      "sources": {
+        "unitPowerKW": "https://lenovopress.lenovo.com/lp2357-lenovo-nvidia-gb300-nvl72-rack-scale-ai"
+      },
+      "notes": "Per-GPU = rack/72: 20 TB HBM3e (277.8 GB, rounded) and 576 TB/s. Rack lists FP4 1,440|1,080 PF (sparse|dense), FP8 720 PF sparse, BF16 360 PF sparse; dense per GPU = FP4 1080/72, FP8 360/72, BF16 180/72. NVIDIA does not publish a single rack power figure; 135 kW is an estimate from third-party/OEM reports of ~132-140 kW typical, peaks up to ~155 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "rtx-pro-6000",
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "vendor": "NVIDIA",
+      "memoryGB": 96,
+      "memoryBandwidthTBs": 1.597,
+      "precisions": [
+        "BF16",
+        "FP8",
+        "FP4"
+      ],
+      "denseTflops": {
+        "BF16": 500,
+        "FP8": 1000,
+        "FP4": 2000
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 7.3,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {
+        "unitPowerKW": "modeled"
+      },
+      "source": "https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/",
+      "sources": {},
+      "notes": "Datasheet lists FP4 4 PF, FP8 2 PF, BF16 1 PF (with sparsity); halved to dense. 96 GB GDDR7, 1,597 GB/s. Only the GPU's max power is published (600 W); server power estimated as 8 x 0.6 + 2.5 kW host overhead = 7.3 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "l40s",
+      "name": "NVIDIA L40S",
+      "vendor": "NVIDIA",
+      "memoryGB": 48,
+      "memoryBandwidthTBs": 0.864,
+      "precisions": [
+        "BF16",
+        "FP8"
+      ],
+      "denseTflops": {
+        "BF16": 366.5,
+        "FP8": 733
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 5.3,
+      "softwareEfficiency": 1.0,
+      "label": "modeled",
+      "labels": {
+        "unitPowerKW": "modeled"
+      },
+      "source": "https://www.nvidia.com/en-us/data-center/l40s/",
+      "sources": {},
+      "notes": "Datasheet lists BF16 733 and FP8 1,466 TFLOPS with sparsity; halved to dense. 48 GB GDDR6, 864 GB/s. Only the GPU's max power is published (350 W); server power estimated as 8 x 0.35 + 2.5 kW = 5.3 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "mi300x",
+      "name": "AMD Instinct MI300X",
+      "vendor": "AMD",
+      "memoryGB": 192,
+      "memoryBandwidthTBs": 5.3,
+      "precisions": [
+        "BF16",
+        "FP8"
+      ],
+      "denseTflops": {
+        "BF16": 1307,
+        "FP8": 2615
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 8.5,
+      "softwareEfficiency": 0.8,
+      "label": "modeled",
+      "labels": {
+        "unitPowerKW": "modeled",
+        "softwareEfficiency": "modeled"
+      },
+      "source": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html",
+      "sources": {
+        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi300/platform.html"
+      },
+      "notes": "AMD lists BF16 2.61 PF and FP8 5.22 PF with structured sparsity; halved to dense (~1.3 / 2.61 PF). 192 GB HBM3, 5.3 TB/s. Only the 750 W board power is published; server power estimated as 8 x 0.75 + 2.5 kW = 8.5 kW. softwareEfficiency stays at the 0.8 default: no independent like-for-like MLPerf comparison was checked. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "mi325x",
+      "name": "AMD Instinct MI325X",
+      "vendor": "AMD",
+      "memoryGB": 256,
+      "memoryBandwidthTBs": 6.0,
+      "precisions": [
+        "BF16",
+        "FP8"
+      ],
+      "denseTflops": {
+        "BF16": 1307,
+        "FP8": 2615
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 10.5,
+      "softwareEfficiency": 0.8,
+      "label": "modeled",
+      "labels": {
+        "unitPowerKW": "modeled",
+        "softwareEfficiency": "modeled"
+      },
+      "source": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x.html",
+      "sources": {
+        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x/platform.html"
+      },
+      "notes": "AMD lists BF16 1.3 PF and FP8 2.61 PF dense (the sparse figures are 2x). 256 GB HBM3E, 6 TB/s. Only the 1,000 W board power is published; server power estimated as 8 x 1.0 + 2.5 kW = 10.5 kW. softwareEfficiency stays at the 0.8 default. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    },
+    {
+      "id": "mi355x",
+      "name": "AMD Instinct MI355X",
+      "vendor": "AMD",
+      "memoryGB": 288,
+      "memoryBandwidthTBs": 8.0,
+      "precisions": [
+        "BF16",
+        "FP8",
+        "FP4"
+      ],
+      "denseTflops": {
+        "BF16": 2500,
+        "FP8": 5000,
+        "FP4": 10100
+      },
+      "purchaseUnit": "server",
+      "gpusPerUnit": 8,
+      "unitPowerKW": 13.7,
+      "softwareEfficiency": 0.8,
+      "label": "modeled",
+      "labels": {
+        "unitPowerKW": "modeled",
+        "softwareEfficiency": "modeled",
+        "denseTflops": "modeled"
+      },
+      "source": "https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/product-briefs/amd-instinct-mi355x-gpu-brochure.pdf",
+      "sources": {
+        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x/platform.html"
+      },
+      "notes": "AMD lists BF16 2.5 PF, OCP-FP8 5 PF and MXFP4 10.1 PF; treated as dense (AMD lists sparse separately), but the excerpt did not confirm the dense/sparse basis. 288 GB HBM3E, 8 TB/s. Only the 1,400 W board power is published; server power estimated as 8 x 1.4 + 2.5 kW = 13.7 kW. softwareEfficiency stays at the 0.8 default. AMD's own MLPerf Inference 6.0/6.1 blog posts exist but were not fetched. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+    }
+  ]
+}
