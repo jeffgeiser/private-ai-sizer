@@ -65,7 +65,7 @@ const result = calculate(defaultScenario(), { gpus, models, throughput });
 
 ## Updating the data
 
-Only the JSON files change when numbers change. Every record carries a `label` and a `source`; per-field overrides go in `labels` and `sources`. Bump `version` and `updated`, and add a line to `CHANGELOG.md`.
+Only the JSON files change when numbers change. Every record carries a `label` and a `source`. Per-field labels and sources go in `labels` and `sources`, and can be stronger or weaker than the record label. A result takes the weakest label it depends on. Estimated server power also carries `psu_ceiling_kw`, which is active PSUs × PSU rating for a named OEM server, and `psu_ceiling_source`. Bump `version` and `updated`, and add a line to `CHANGELOG.md`.
 
 To add a benchmark result, append a row to `throughput.json`:
 
@@ -86,5 +86,6 @@ If a scenario's cache hit rate differs from the row's, the engine scales the row
 - [x] Slide 10: with the deck's assumptions it returns 16 vs 96 GPUs. The fixture is H100, 70B FP8, one 8-GPU server per copy, flat demand, N+1, whole servers, 2 B tokens/day over six borders. The flat shape and the 8 GPUs per copy are inferred; check them against the deck. Under the auto memory fit, 70B FP8 fits in 2 × H100, which gives 16 vs 48.
 - [x] Slide 11: a 1% market deploys 16 GPUs. **Open:** "about 3 GPUs of demand, about 7% utilization" needs the deck's total demand for that slide. The test is marked `todo`.
 - [ ] Agrees with the benchmark within 10%. Needs the H100 sweep in `throughput.json`.
-- [ ] GPU catalog switched from `modeled` to `published` after a direct datasheet check.
+- [x] Modeled server power is at or below the PSU ceiling (`psu_ceiling_kw`: active PSUs × rating) for every GPU that has one.
+- [ ] Rest of the GPU catalog switched from `modeled` to `published` after a direct datasheet check. Done for B300 and GB300 memory, bandwidth and power, and for MI300X and MI325X memory, bandwidth, power and precisions. Still pending for TFLOPS and the other GPUs.
 - [ ] Outside review by an infrastructure engineer; legal and marketing review of the disclaimer and example prices.

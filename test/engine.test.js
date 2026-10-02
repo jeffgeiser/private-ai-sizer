@@ -70,6 +70,22 @@ describe('reference data', () => {
     for (const r of data.throughput.rows) assert.ok(r.label in E.LABEL_RANK && r.source);
   });
 
+  test('every modeled unit power is at or below its PSU ceiling', () => {
+    const fieldLabel = (g, f) => g.labels?.[f] ?? g.label;
+    for (const g of data.gpus.gpus) {
+      if (g.psu_ceiling_kw != null) {
+        assert.ok(g.psu_ceiling_kw > 0, `${g.id}: psu_ceiling_kw`);
+        assert.match(g.psu_ceiling_source || '', /^https:\/\//, `${g.id}: psu_ceiling_source`);
+      }
+      if (fieldLabel(g, 'unitPowerKW') !== 'modeled' || g.psu_ceiling_kw == null) continue;
+      assert.ok(g.unitPowerKW <= g.psu_ceiling_kw, `${g.id}: ${g.unitPowerKW} kW is above the ${g.psu_ceiling_kw} kW PSU ceiling`);
+    }
+    // Estimated server power must always have a ceiling to check against.
+    for (const id of ['rtx-pro-6000', 'l40s', 'mi300x', 'mi325x', 'mi355x']) {
+      assert.ok(data.gpus.gpus.find((g) => g.id === id).psu_ceiling_kw > 0, `${id} needs psu_ceiling_kw`);
+    }
+  });
+
   test('every file is versioned', () => {
     for (const f of [data.gpus, data.models, data.throughput]) {
       assert.match(f.version, /^\d{4}\.\d+\.\d+$/);

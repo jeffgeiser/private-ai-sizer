@@ -1,8 +1,8 @@
 {
   "kind": "gpu-catalog",
-  "version": "2026.10.0",
+  "version": "2026.10.1",
   "updated": "2026-10-02",
-  "notes": "Built 2026-10-02. WebFetch was egress-blocked for every domain tried (nvidia.com, amd.com, docs/resources.nvidia.com, lenovopress, wikipedia), so no page could be fetched directly. Each vendor figure was cross-checked against web-search excerpts of the vendor page given in source. Because none were fetched, every record is labeled modeled. Per-field labels mark values that are estimates even beyond that (server power derived from board power, GB300 rack power, AMD softwareEfficiency default). Dense TFLOPS = vendor sparse figure / 2 unless the vendor gives a dense figure. Platform per-GPU values = platform total / GPU count.",
+  "notes": "Values for B300, GB300 NVL72, MI300X and MI325X memory/bandwidth/power were fetched from primary vendor sources (see per-field sources); per-field labels mark those fields published. Other values were checked only against search excerpts and stay modeled. psu_ceiling_kw is active PSUs x PSU rating for a named OEM server (from the OEM page in psu_ceiling_source); it is a ceiling, not a measured draw, and modeled unit power must not exceed it. Dense TFLOPS = vendor sparse figure / 2 unless the vendor gives a dense figure. Platform per-GPU values = platform total / GPU count.",
   "gpus": [
     {
       "id": "h100-sxm",
@@ -88,8 +88,8 @@
       "id": "b300",
       "name": "NVIDIA B300 (HGX/DGX B300)",
       "vendor": "NVIDIA",
-      "memoryGB": 288,
-      "memoryBandwidthTBs": 8.0,
+      "memoryGB": 270,
+      "memoryBandwidthTBs": 7.7,
       "precisions": [
         "BF16",
         "FP8",
@@ -104,19 +104,29 @@
       "gpusPerUnit": 8,
       "unitPowerKW": 14.5,
       "softwareEfficiency": 1.0,
+      "tdpW": 1100,
       "label": "modeled",
-      "labels": {},
+      "labels": {
+        "memoryGB": "published",
+        "memoryBandwidthTBs": "published",
+        "tdpW": "published",
+        "unitPowerKW": "published"
+      },
       "source": "https://www.nvidia.com/en-us/data-center/dgx-b300/",
       "sources": {
-        "denseTflops": "https://www.nvidia.com/en-us/data-center/hgx/"
+        "denseTflops": "https://www.nvidia.com/en-us/data-center/hgx/",
+        "memoryGB": "https://dam-cdn.nvd.orangelogic.com/AssetLink/1k0p832eq8r5ca0u5383ie5o4tp3bst1.pdf",
+        "memoryBandwidthTBs": "https://dam-cdn.nvd.orangelogic.com/AssetLink/1k0p832eq8r5ca0u5383ie5o4tp3bst1.pdf",
+        "tdpW": "https://dam-cdn.nvd.orangelogic.com/AssetLink/1k0p832eq8r5ca0u5383ie5o4tp3bst1.pdf",
+        "unitPowerKW": "https://dam-cdn.nvd.orangelogic.com/AssetLink/625w0j7hnw6f07ui7fo63211mti2v08o.pdf"
       },
-      "notes": "Memory = DGX B300 2.3 TB / 8 (8 x 288 GB); note the HGX B300 page lists 2.1 TB total (~270 GB/GPU), so OEM HGX builds may be lower. Bandwidth up to 8 TB/s per GPU. HGX B300 lists FP4 144|108 PF (sparse|dense), FP8 72 PF sparse, BF16 36 PF sparse; dense per GPU = FP4 108/8, FP8 36/8, BF16 18/8. Power = DGX B300 14.5 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "HGX B300 per-GPU memory and bandwidth from the NVIDIA Blackwell Ultra datasheet (\"270 GB HBM3E | 7.7 TB/s\"; \"Max Thermal Design Power (TDP) Configurable up to 1,100 W\"; landing page https://resources.nvidia.com/en-us-blackwell-architecture/blackwell-ultra-datasheet). 8 x 270 GB matches the \"2.1 TB\" on the HGX and DGX B300 pages. The DGX B300 User Guide and the Enterprise RA say 288 GB / 2.3 TB; NVIDIA's blog calls 288 GB the maximum and says capacity varies by SKU, so the conservative datasheet figure is used. Unit power 14.5 kW is the DGX B300 datasheet busbar figure (\"System Power 14.5 kW (Busbar) 15.1 kW (PSU)\"). Dense TFLOPS are still from search excerpts and stay modeled."
     },
     {
       "id": "gb300-nvl72",
       "name": "NVIDIA GB300 NVL72",
       "vendor": "NVIDIA",
-      "memoryGB": 278,
+      "memoryGB": 279,
       "memoryBandwidthTBs": 8.0,
       "precisions": [
         "BF16",
@@ -132,15 +142,22 @@
       "gpusPerUnit": 72,
       "unitPowerKW": 135,
       "softwareEfficiency": 1.0,
+      "tdpW": 1400,
       "label": "modeled",
       "labels": {
+        "memoryGB": "published",
+        "memoryBandwidthTBs": "published",
+        "tdpW": "published",
         "unitPowerKW": "modeled"
       },
       "source": "https://www.nvidia.com/en-us/data-center/gb300-nvl72/",
       "sources": {
-        "unitPowerKW": "https://lenovopress.lenovo.com/lp2357-lenovo-nvidia-gb300-nvl72-rack-scale-ai"
+        "unitPowerKW": "https://lenovopress.lenovo.com/lp2357-lenovo-nvidia-gb300-nvl72-rack-scale-ai",
+        "memoryGB": "https://dam-cdn.nvd.orangelogic.com/AssetLink/1k0p832eq8r5ca0u5383ie5o4tp3bst1.pdf",
+        "memoryBandwidthTBs": "https://dam-cdn.nvd.orangelogic.com/AssetLink/1k0p832eq8r5ca0u5383ie5o4tp3bst1.pdf",
+        "tdpW": "https://dam-cdn.nvd.orangelogic.com/AssetLink/1k0p832eq8r5ca0u5383ie5o4tp3bst1.pdf"
       },
-      "notes": "Per-GPU = rack/72: 20 TB HBM3e (277.8 GB, rounded) and 576 TB/s. Rack lists FP4 1,440|1,080 PF (sparse|dense), FP8 720 PF sparse, BF16 360 PF sparse; dense per GPU = FP4 1080/72, FP8 360/72, BF16 180/72. NVIDIA does not publish a single rack power figure; 135 kW is an estimate from third-party/OEM reports of ~132-140 kW typical, peaks up to ~155 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "Per-GPU memory, bandwidth and TDP from the NVIDIA Blackwell Ultra datasheet (\"279 GB HBM3E | 8 TB/s\", up to 1,400 W per GPU; landing page https://resources.nvidia.com/en-us-blackwell-architecture/blackwell-ultra-datasheet). Rack power stays a modeled ~135 kW: NVIDIA publishes no single NVL72 rack figure, and OEM reports range about 132-140 kW typical. Dense TFLOPS are still from search excerpts and stay modeled."
     },
     {
       "id": "rtx-pro-6000",
@@ -161,6 +178,8 @@
       "purchaseUnit": "server",
       "gpusPerUnit": 8,
       "unitPowerKW": 7.3,
+      "psu_ceiling_kw": 10.8,
+      "psu_ceiling_source": "https://www.supermicro.com/en/products/system/gpu/5u/sys-522ga-nrt",
       "softwareEfficiency": 1.0,
       "label": "modeled",
       "labels": {
@@ -168,7 +187,7 @@
       },
       "source": "https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/",
       "sources": {},
-      "notes": "Datasheet lists FP4 4 PF, FP8 2 PF, BF16 1 PF (with sparsity); halved to dense. 96 GB GDDR7, 1,597 GB/s. Only the GPU's max power is published (600 W); server power estimated as 8 x 0.6 + 2.5 kW host overhead = 7.3 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "Datasheet lists FP4 4 PF, FP8 2 PF, BF16 1 PF (with sparsity); halved to dense. 96 GB GDDR7, 1,597 GB/s. Only the GPU's max power is published (600 W); server power estimated as 8 x 0.6 + 2.5 kW host overhead = 7.3 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch. Unit power 7.3 kW is an estimate (no OEM publishes max system power). PSU ceiling: Supermicro SYS-522GA-NRT: 6 x 2700 W, 4+2 redundant, so 4 active x 2.7 kW = 10.8 kW."
     },
     {
       "id": "l40s",
@@ -186,7 +205,9 @@
       },
       "purchaseUnit": "server",
       "gpusPerUnit": 8,
-      "unitPowerKW": 5.3,
+      "unitPowerKW": 4.8,
+      "psu_ceiling_kw": 5.4,
+      "psu_ceiling_source": "https://www.supermicro.com/en/products/system/gpu/4u/sys-421ge-tnrt",
       "softwareEfficiency": 1.0,
       "label": "modeled",
       "labels": {
@@ -194,7 +215,7 @@
       },
       "source": "https://www.nvidia.com/en-us/data-center/l40s/",
       "sources": {},
-      "notes": "Datasheet lists BF16 733 and FP8 1,466 TFLOPS with sparsity; halved to dense. 48 GB GDDR6, 864 GB/s. Only the GPU's max power is published (350 W); server power estimated as 8 x 0.35 + 2.5 kW = 5.3 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "Datasheet lists BF16 733 and FP8 1,466 TFLOPS with sparsity; halved to dense. 48 GB GDDR6, 864 GB/s. Only the GPU's max power is published (350 W); server power estimated as 8 x 0.35 + 2.5 kW = 5.3 kW. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch. Unit power 4.8 kW is an estimate (no OEM publishes max system power). PSU ceiling: Supermicro SYS-421GE-TNRT: 4 x 2700 W, 2+2 redundant, so 2 active x 2.7 kW = 5.4 kW."
     },
     {
       "id": "mi300x",
@@ -213,17 +234,28 @@
       "purchaseUnit": "server",
       "gpusPerUnit": 8,
       "unitPowerKW": 8.5,
+      "psu_ceiling_kw": 9.0,
+      "psu_ceiling_source": "https://www.supermicro.com/en/products/system/gpu/8u/as-8125gs-tnmr2",
       "softwareEfficiency": 0.8,
+      "tdpW": 750,
       "label": "modeled",
       "labels": {
+        "memoryGB": "published",
+        "memoryBandwidthTBs": "published",
+        "tdpW": "published",
+        "precisions": "published",
         "unitPowerKW": "modeled",
         "softwareEfficiency": "modeled"
       },
       "source": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html",
       "sources": {
-        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi300/platform.html"
+        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html",
+        "memoryBandwidthTBs": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html",
+        "tdpW": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html",
+        "precisions": "https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/data-sheets/amd-instinct-mi300x-data-sheet.pdf",
+        "denseTflops": "https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/data-sheets/amd-instinct-mi300x-data-sheet.pdf"
       },
-      "notes": "AMD lists BF16 2.61 PF and FP8 5.22 PF with structured sparsity; halved to dense (~1.3 / 2.61 PF). 192 GB HBM3, 5.3 TB/s. Only the 750 W board power is published; server power estimated as 8 x 0.75 + 2.5 kW = 8.5 kW. softwareEfficiency stays at the 0.8 default: no independent like-for-like MLPerf comparison was checked. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "Memory, bandwidth and board power (750 W) from the amd.com product page; precisions and dense TFLOPS (BF16 1307.4, FP8 2614.9) from the amd.com datasheet. FP6 and FP4 are not listed for this part. Unit power 8.5 kW is an estimate (no OEM publishes max system power). PSU ceiling: Supermicro AS -8125GS-TNMR2: 6 x 3000 W, 3+3 redundant, so 3 active x 3.0 kW = 9.0 kW (8.64 kW at 200-207 VAC, where each PSU is rated 2880 W)."
     },
     {
       "id": "mi325x",
@@ -241,18 +273,29 @@
       },
       "purchaseUnit": "server",
       "gpusPerUnit": 8,
-      "unitPowerKW": 10.5,
+      "unitPowerKW": 11.5,
+      "psu_ceiling_kw": 15.75,
+      "psu_ceiling_source": "https://www.supermicro.com/en/products/system/gpu/8u/as-8126gs-tnmr",
       "softwareEfficiency": 0.8,
+      "tdpW": 1000,
       "label": "modeled",
       "labels": {
+        "memoryGB": "published",
+        "memoryBandwidthTBs": "published",
+        "tdpW": "published",
+        "precisions": "published",
         "unitPowerKW": "modeled",
         "softwareEfficiency": "modeled"
       },
       "source": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x.html",
       "sources": {
-        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x/platform.html"
+        "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x.html",
+        "memoryBandwidthTBs": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x.html",
+        "tdpW": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi325x.html",
+        "precisions": "https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/product-briefs/instinct-mi325x-datasheet.pdf",
+        "denseTflops": "https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/product-briefs/instinct-mi325x-datasheet.pdf"
       },
-      "notes": "AMD lists BF16 1.3 PF and FP8 2.61 PF dense (the sparse figures are 2x). 256 GB HBM3E, 6 TB/s. Only the 1,000 W board power is published; server power estimated as 8 x 1.0 + 2.5 kW = 10.5 kW. softwareEfficiency stays at the 0.8 default. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "Memory, bandwidth and board power (1000 W) from the amd.com product page; precisions and dense TFLOPS (BF16 1307.4, FP8 2614.9) from the amd.com datasheet. FP6 and FP4 are not listed for this part. Unit power 11.5 kW is an estimate (no OEM publishes max system power). PSU ceiling: Supermicro AS -8126GS-TNMR: 6 x 5250 W, 3+3 redundant, so 3 active x 5.25 kW = 15.75 kW."
     },
     {
       "id": "mi355x",
@@ -272,7 +315,9 @@
       },
       "purchaseUnit": "server",
       "gpusPerUnit": 8,
-      "unitPowerKW": 13.7,
+      "unitPowerKW": 13.0,
+      "psu_ceiling_kw": 13.2,
+      "psu_ceiling_source": "https://www.supermicro.com/en/products/system/gpu/4u/as-4126gs-nmr-lcc",
       "softwareEfficiency": 0.8,
       "label": "modeled",
       "labels": {
@@ -284,7 +329,7 @@
       "sources": {
         "memoryGB": "https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x/platform.html"
       },
-      "notes": "AMD lists BF16 2.5 PF, OCP-FP8 5 PF and MXFP4 10.1 PF; treated as dense (AMD lists sparse separately), but the excerpt did not confirm the dense/sparse basis. 288 GB HBM3E, 8 TB/s. Only the 1,400 W board power is published; server power estimated as 8 x 1.4 + 2.5 kW = 13.7 kW. softwareEfficiency stays at the 0.8 default. AMD's own MLPerf Inference 6.0/6.1 blog posts exist but were not fetched. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch."
+      "notes": "Liquid-cooled 8-GPU system. AMD lists BF16 2.5 PF, OCP-FP8 5 PF and MXFP4 10.1 PF; treated as dense (AMD lists sparse separately), but the excerpt did not confirm the dense/sparse basis. 288 GB HBM3E, 8 TB/s. Only the 1,400 W board power is published; server power estimated as 8 x 1.4 + 2.5 kW = 13.7 kW. softwareEfficiency stays at the 0.8 default. AMD's own MLPerf Inference 6.0/6.1 blog posts exist but were not fetched. Values match the vendor page per web-search excerpts; the page itself could not be fetched (egress blocked), so the record is labeled modeled pending a direct fetch. Unit power 13.0 kW is an estimate (no OEM publishes max system power). PSU ceiling: Supermicro AS -4126GS-NMR-LCC (liquid, direct-to-chip): 4 x 6600 W, 2+2 redundant, so 2 active x 6.6 kW = 13.2 kW at 239-240 VAC. At 200-207.9 VAC each PSU is rated 5900 W, so the ceiling is 11.8 kW, below the 13 kW estimate."
     }
   ]
 }
