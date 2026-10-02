@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import * as E from '../src/engine.js';
-import { defaultScenario, applyBorderPreset, BORDER_PRESETS } from '../src/scenario.js';
+import { defaultScenario, applyBorderPreset, BORDER_PRESETS, EXAMPLE_PRICES } from '../src/scenario.js';
 import { loadData } from '../src/data-node.js';
 
 const data = loadData();
@@ -368,8 +368,8 @@ describe('step 9: utilization, power and cost', () => {
   });
 
   test('at the crossover, private and API cost are equal (within one step)', () => {
-    const s = scenario();
-    const prices = s.advanced.prices;
+    const prices = EXAMPLE_PRICES;
+    const s = scenario({ advanced: { prices } });
     const x = E.crossover(s, data, prices);
     assert.ok(x && x.tokensPerMonth > 0);
     const tpd = x.tokensPerMonth / E.DAYS_PER_MONTH;
@@ -380,6 +380,7 @@ describe('step 9: utilization, power and cost', () => {
   });
 
   test('no cost view without prices', () => {
+    assert.equal(E.calculate(scenario(), data).cost, null);
     const r = E.calculate(scenario({ advanced: { prices: { gpuHour: 0, apiInPerM: 0, apiOutPerM: 0 } } }), data);
     assert.equal(r.cost, null);
   });

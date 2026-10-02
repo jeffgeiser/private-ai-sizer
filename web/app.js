@@ -2,7 +2,7 @@
 // The only network requests are for the static data files on page load; no
 // input value is ever sent anywhere. The scenario is kept in the URL fragment.
 import * as E from '../src/engine.js';
-import { defaultScenario, normalizeScenario, encodeScenario, decodeScenario, applyBorderPreset, BORDER_PRESETS, EXAMPLE_PRICES } from '../src/scenario.js';
+import { defaultScenario, normalizeScenario, encodeScenario, decodeScenario, applyBorderPreset, BORDER_PRESETS } from '../src/scenario.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n, d = 0) => (n == null || !isFinite(n) ? '–' : n.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d }));
@@ -94,14 +94,6 @@ function writeForm() {
   options($('rightSize'), [['', `Default (${nameOf(E.defaultRightSizeTarget(s, data)) || 'none smaller'})`], ...data.models.models.filter((m) => m.id !== s.model).map((m) => [m.id, m.name])], a.rightSizeModel || '');
   setOptional('kw', a.kWPerUnit, gpu.unitPowerKW);
   $('pue').value = a.pue ?? '';
-  const p = a.prices;
-  $('currency').value = p.currency;
-  $('gpuHour').value = p.gpuHour;
-  $('apiIn').value = p.apiInPerM;
-  $('apiOut').value = p.apiOutPerM;
-  $('priceNote').textContent = p.example
-    ? 'These are labeled example prices, not quotes or vendor list prices. Enter your own to replace them.'
-    : 'Using the prices you entered.';
   writeLevers();
 }
 
@@ -209,9 +201,6 @@ function readForm() {
   a.rightSizeModel = $('rightSize').value || null;
   a.kWPerUnit = num('kw');
   a.pue = num('pue');
-  const prices = { currency: $('currency').value.trim() || 'USD', gpuHour: num('gpuHour') || 0, apiInPerM: num('apiIn') || 0, apiOutPerM: num('apiOut') || 0 };
-  const isExample = prices.gpuHour === EXAMPLE_PRICES.gpuHour && prices.apiInPerM === EXAMPLE_PRICES.apiInPerM && prices.apiOutPerM === EXAMPLE_PRICES.apiOutPerM;
-  a.prices = { ...prices, example: isExample };
 
   document.querySelectorAll('[data-lever]').forEach((c) => (s.levers[c.dataset.lever] = c.checked));
 }
@@ -222,7 +211,7 @@ function readForm() {
 function render() {
   let r;
   try {
-    r = E.calculate(state, data);
+    r = E.calculate({ ...state, advanced: { ...state.advanced, prices: null } }, data); // no cost view on this page
   } catch (e) {
     r = { error: e.message };
   }
@@ -254,10 +243,8 @@ function render() {
 
   renderSummaryChart(r);
   renderDrivers(r);
-  renderCostLine(r);
   renderWaterfall(r);
   renderBorders(r);
-  renderCost(r);
   renderExplain(r);
 }
 
@@ -324,13 +311,6 @@ function renderDrivers(r) {
   const causes = r.causes.filter((x) => x.gpus > 0).sort((a, b) => b.gpus - a.gpus).slice(0, 3);
   $('drivers').innerHTML = causes.length
     ? `<h3>What drives it</h3><ul>${causes.map((x) => `<li><span class="n">+${fmt(x.gpus)}</span> ${esc(x.name)} <span class="hint">— ${esc(CAUSE_WHY[x.id])}</span></li>`).join('')}</ul>`
-    : '';
-}
-
-function renderCostLine(r) {
-  const c = r.cost;
-  $('costLine').innerHTML = c
-    ? `Monthly cost: <b>${money(c.privateBordered, c.currency)}</b> across these regions vs ${money(c.api, c.currency)} on a public API${c.examplePrices ? ' (example prices)' : ''}.`
     : '';
 }
 
@@ -442,37 +422,6 @@ function renderBorders(r) {
     <tfoot><tr>${cols.map((c) => `<td>${cell(c, total[c])}</td>`).join('')}</tr></tfoot>`;
 }
 
-function money(v, cur) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(v);
-  } catch {
-    return `${cur} ${fmt(v)}`;
-  }
-}
-
-function renderCost(r) {
-  const c = r.cost;
-  if (!c) {
-    $('cost').innerHTML = '<p class="hint">Enter a GPU-hour price and API token prices in Advanced to compare private capacity with a public API.</p>';
-    return;
-  }
-  const x = c.crossover;
-  const crossoverText = !x
-    ? 'Private capacity isn’t cheaper than the API anywhere from 1/1000× to 1000× this demand.'
-    : x.belowRange
-      ? 'Private capacity is cheaper than the API even at 1/1000 of this demand.'
-      : `Private capacity across these regions becomes cheaper above about <strong>${compact(x.tokensPerMonth)} tokens per month</strong> (this scenario: ${compact(c.tokensPerMonth)}).`;
-  $('cost').innerHTML = `
-    ${c.examplePrices ? '<p class="warn">Example prices, for illustration only. They are not quotes or vendor list prices; enter your own in Advanced.</p>' : ''}
-    <table><thead><tr><th>Monthly cost</th><th>${esc(c.currency)}</th></tr></thead><tbody>
-      <tr><td>Private, across regions</td><td>${money(c.privateBordered, c.currency)}</td></tr>
-      <tr><td>Private, one shared pool</td><td>${money(c.privateShared, c.currency)}</td></tr>
-      ${r.levers.some((l) => l.applied) ? `<tr><td>Private, optimized</td><td>${money(c.privateAfterLevers, c.currency)}</td></tr>` : ''}
-      <tr><td>Public API, same tokens</td><td>${money(c.api, c.currency)}</td></tr>
-    </tbody></table>
-    <p>${crossoverText}</p>`;
-}
-
 function renderExplain(r) {
   const t = r.throughput.split;
   const tp = r.throughput.pooled;
@@ -488,7 +437,7 @@ function renderExplain(r) {
     <dt>Copies per region</dt>
     <dd>max(1, ⌈peak × (1 + ${pct(state.advanced.headroom)}) ÷ R⌉) + ${state.advanced.redundancy}, then × GPUs per copy${state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? ` for each of ${state.advanced.variants} variants` : ''}, rounded up to ${r.unit} GPU${r.unit === 1 ? '' : 's'}.</dd>
     <dt>Data labels</dt>
-    <dd>Results take the weakest label of their inputs: ${LABEL_TEXT[r.label].toLowerCase()}. GPU (${esc(r.gpu.name)}): ${esc(gpuLabels(r.gpu))}. Model: ${esc(r.model.label)}. Throughput: ${esc(r.labels.throughput)}. Workload shape and cache hit rates: ${esc(r.workload.label)}. Prices: example values unless you entered your own.</dd>
+    <dd>Results take the weakest label of their inputs: ${LABEL_TEXT[r.label].toLowerCase()}. GPU (${esc(r.gpu.name)}): ${esc(gpuLabels(r.gpu))}. Model: ${esc(r.model.label)}. Throughput: ${esc(r.labels.throughput)}. Workload shape and cache hit rates: ${esc(r.workload.label)}.</dd>
     <dt>Shared pool</dt>
     <dd>The same steps once for total demand, at the peak of the summed hourly curve (${fmt(r.borders.reduce((a, b) => a + b.peakRps, 0), 2)} req/s if peaks lined up, ${fmt(E.buildContext(state, data).pooledPeak, 2)} req/s actually).</dd>
   </dl>`;

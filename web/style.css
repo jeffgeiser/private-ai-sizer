@@ -124,7 +124,6 @@ body[data-view="overview"] .breakdown:not(.open) { display: none; }
 .drivers ul { margin: 0; padding: 0; list-style: none; }
 .drivers li { margin: 2px 0; }
 .drivers .n { display: inline-block; min-width: 3.2ch; font-weight: 600; font-variant-numeric: tabular-nums; }
-.costline { color: var(--muted); font-size: 0.92rem; }
 button.link { background: none; border: 0; color: var(--accent); padding: 4px 0; font-weight: 600; }
 .lever .save { margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--lever); }
 body[data-view="overview"] .row.demand { grid-template-columns: 1fr; }

@@ -14,7 +14,7 @@ test('defaults match the spec', () => {
   assert.equal(s.advanced.redundancy, 1);
   assert.equal(s.advanced.headroom, 0.25);
   assert.equal(s.advanced.variants, 1);
-  assert.ok(s.advanced.prices.example, 'example prices are labeled as examples');
+  assert.equal(s.advanced.prices, null, 'no prices by default: the first release has no cost view');
 });
 
 test('a scenario survives the URL fragment round trip', () => {

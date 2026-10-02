@@ -103,18 +103,6 @@
           <label>PUE (optional) <input id="pue" type="number" min="1" step="0.01" placeholder="none"></label>
         </div>
       </fieldset>
-      <fieldset>
-        <legend>Prices (cost view only)</legend>
-        <p class="hint" id="priceNote"></p>
-        <div class="row">
-          <label>Currency <input id="currency" type="text" maxlength="4"></label>
-          <label>Private, per GPU-hour <input id="gpuHour" type="number" min="0" step="0.01"></label>
-        </div>
-        <div class="row">
-          <label>API, per M input tokens <input id="apiIn" type="number" min="0" step="0.01"></label>
-          <label>API, per M output tokens <input id="apiOut" type="number" min="0" step="0.01"></label>
-        </div>
-      </fieldset>
       <button type="button" id="reset" class="secondary">Reset to defaults</button>
     </details>
   </form>
@@ -131,7 +119,6 @@
         <figcaption id="summaryLegend" class="legend"></figcaption>
       </figure>
       <div class="drivers ov" id="drivers"></div>
-      <p class="costline ov" id="costLine"></p>
       <button type="button" class="link ov" id="toggleBreakdown" aria-expanded="false" aria-controls="breakdown">Show the full breakdown</button>
 
       <section id="breakdown" class="breakdown">
@@ -156,9 +143,6 @@
       <section class="eng">
         <h2>Per region</h2>
         <div class="scroll"><table id="borderTable"></table></div>
-
-        <h2>Cost and crossover</h2>
-        <div id="cost"></div>
 
         <h2>How this was sized</h2>
         <div id="explain"></div>

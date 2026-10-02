@@ -1,6 +1,6 @@
 {
   "name": "private-ai-sizer",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Distributed Private AI Sizer: sizes private AI inference across regions, compares it with one shared pool, and shows how to optimize it.",
   "type": "module",
   "main": "src/engine.js",

@@ -34,10 +34,10 @@ The page has two views, and the share link remembers which one is open:
 
 - **Overview** (default): for leaders.
   - Inputs: workload, model, GPU, demand, a border preset with a one-line summary (edit the borders only if you want), and the levers.
-  - Results: the tax as one number, a three-bar chart (shared pool, with borders, after levers), the top causes in plain words, and a one-line cost comparison. The full waterfall is one click away.
+  - Results: the distribution overhead as one number, a three-bar chart (shared pool, with regions, optimized), and the top causes in plain words. The full waterfall is one click away.
 - **Engineering detail**: everything.
   - Precision and the advanced assumptions.
-  - The full waterfall, the per-border table, the cost table, and how the result was sized.
+  - The full waterfall, the per-region table, and how the result was sized.
   - PNG and CSV export.
 
 The results show one data label for the whole page, the weakest label of the inputs, instead of a badge on each number. Engineering detail lists the label behind each input.
@@ -70,7 +70,7 @@ const result = calculate(defaultScenario(), { gpus, models, throughput });
 6. **Shared pool.** The same steps once, at the peak of the summed hourly curve, with the pooled cache hit rate.
 7. **Tax and waterfall.** The constraints are switched on one at a time in a fixed order: separate peaks, per-border floor, redundancy, purchase-unit rounding, duplicated models, fragmented caches. State 0 is the shared pool and state 6 is the bordered total, so the steps always sum exactly. States 0–1 use the shared pool's copy size and states 2–6 use the borders' size. When the two differ, the change lands in the per-border floor step, because small borders favour small copies when each border pays its own floor and spares. Where ceilings interact, a raw intermediate state can dip. Each state is therefore clamped between the previous state and the bordered total, which keeps every step at zero or above.
 8. **Levers**, applied in a fixed order: burst the share whose data may leave (to one shared pool with its own floor and spares), pool borders with the same jurisdiction group, buy single GPUs, right-size the model, serve variants as adapters. A lever that would add GPUs isn't applied, and its step says why.
-9. **Utilization, power, cost.**
+9. **Utilization, power, cost.** The page doesn't show cost in this release, but the engine still computes it when a scenario includes prices (`EXAMPLE_PRICES` in `src/scenario.js`).
    - Utilization is demand in GPU-equivalents divided by deployed GPUs.
    - IT power is units × kW per unit; facility power is IT power × PUE.
    - Private cost is GPUs × price per GPU-hour × 730.
@@ -102,4 +102,4 @@ If a scenario's cache hit rate differs from the row's, the engine scales the row
 - [ ] Agrees with the benchmark within 10%. Needs the H100 sweep in `throughput.json`.
 - [x] Modeled server power is at or below the PSU ceiling (`psu_ceiling_kw`: active PSUs × rating) for every GPU that has one.
 - [ ] Rest of the GPU catalog switched from `modeled` to `published` after a direct datasheet check. Done for B300 and GB300 memory, bandwidth and power, and for MI300X and MI325X memory, bandwidth, power and precisions. Still pending for TFLOPS and the other GPUs.
-- [ ] Outside review by an infrastructure engineer; legal and marketing review of the disclaimer and example prices.
+- [ ] Outside review by an infrastructure engineer; legal and marketing review of the disclaimer.

@@ -29,7 +29,8 @@ export const DEFAULT_ADVANCED = {
   pue: null,
   gpusPerCopy: 'auto',
   rightSizeModel: null,
-  prices: { ...EXAMPLE_PRICES },
+  // No cost view in this release; pass prices (e.g. EXAMPLE_PRICES) to get one.
+  prices: null,
 };
 
 export const DEFAULT_LEVERS = { burst: true, pool: true, units: true, rightsize: false, adapters: true };
@@ -118,7 +119,7 @@ export function normalizeScenario(s) {
     ...s,
     demand: { ...d.demand, ...(s?.demand || {}) },
     borders: Array.isArray(s?.borders) && s.borders.length ? s.borders : d.borders,
-    advanced: { ...d.advanced, ...(s?.advanced || {}), prices: { ...d.advanced.prices, ...(s?.advanced?.prices || {}) } },
+    advanced: { ...d.advanced, ...(s?.advanced || {}) },
     levers: { ...d.levers, ...(s?.levers || {}) },
     ui: { ...d.ui, ...(s?.ui || {}) },
   };

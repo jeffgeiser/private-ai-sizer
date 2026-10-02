@@ -2,6 +2,12 @@
 
 Data files and the engine are versioned separately. Data versions are `YYYY.MINOR.PATCH`; the engine follows the package version.
 
+## Page 0.5.0 — 2026-10-02
+
+- **Cost and prices removed from the page** in both views: the monthly cost line, the cost and break-even table, and the price inputs. This settles the spec's open question about showing example prices.
+- The default scenario no longer carries prices.
+- The engine still computes cost and the break-even point when a scenario includes prices, so the cost view can come back later.
+
 ## Page 0.4.1 — 2026-10-02
 
 - **Overview trimmed to the essentials:** the overhead number, its percent and extra kW, the three-bar chart, the top causes and a one-line monthly cost.
