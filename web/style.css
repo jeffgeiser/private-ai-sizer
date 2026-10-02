@@ -121,9 +121,9 @@ body[data-view="overview"] .breakdown:not(.open) { display: none; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .drivers { margin: 14px 0 6px; }
 .drivers h3 { font-size: 0.95rem; margin: 0 0 6px; }
-.drivers ol { margin: 0; padding-left: 20px; }
+.drivers ul { margin: 0; padding: 0; list-style: none; }
 .drivers li { margin: 2px 0; }
-.drivers .n { font-weight: 600; font-variant-numeric: tabular-nums; }
+.drivers .n { display: inline-block; min-width: 3.2ch; font-weight: 600; font-variant-numeric: tabular-nums; }
 .costline { color: var(--muted); font-size: 0.92rem; }
 button.link { background: none; border: 0; color: var(--accent); padding: 4px 0; font-weight: 600; }
 .lever .save { margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--lever); }

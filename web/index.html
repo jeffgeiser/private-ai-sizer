@@ -11,7 +11,7 @@
 <header class="top">
   <div class="title">
     <h1>Distributed Private AI Sizer</h1>
-    <p class="lede">Size private AI across regions: the GPUs and power each one needs, how that compares with one shared pool, and how to optimize it. Nothing you enter leaves this page.</p>
+    <p class="lede">Size private AI across regions, and see how to optimize it.</p>
   </div>
   <div class="view-toggle" role="group" aria-label="View">
     <button type="button" data-view="overview" aria-pressed="true">Overview</button>
@@ -43,7 +43,7 @@
           </select>
         </label>
       </div>
-      <p class="hint" id="demandHint"></p>
+      <p class="hint eng" id="demandHint"></p>
     </fieldset>
 
     <fieldset>
@@ -147,7 +147,7 @@
       </section>
 
       <div class="actions">
-        <button type="button" id="copyLink">Copy link to this scenario</button>
+        <button type="button" id="copyLink" class="secondary">Copy link</button>
         <button type="button" id="exportPng" class="secondary eng">Download waterfall (PNG)</button>
         <button type="button" id="exportCsv" class="secondary eng">Download region table (CSV)</button>
         <span id="copied" class="hint" role="status"></span>
@@ -166,7 +166,7 @@
     </div>
 
     <aside class="cta">
-      <p>Want measured numbers instead of modeled ones? Run the same tests on your own workloads in the <a href="https://www.digitalrealty.com/" rel="noopener">Digital Realty Innovation Lab</a>.</p>
+      <p>Get measured numbers for your own workloads in the <a href="https://www.digitalrealty.com/" rel="noopener">Digital Realty Innovation Lab</a>.</p>
     </aside>
     <footer class="data" id="dataVersion"></footer>
   </section>

@@ -36,12 +36,12 @@ const LABEL_TEXT = {
 };
 
 const CAUSE_WHY = {
-  peaks: 'Each region sizes for its own busiest hour instead of sharing peaks.',
-  floor: 'Every region needs at least one full model copy, however small its demand.',
-  redundancy: 'Every region carries its own spare copy.',
-  rounding: 'Each region buys whole servers, even when it needs a fraction of one.',
-  models: 'Every fine-tuned variant is deployed in every region.',
-  caches: 'Smaller pools reuse fewer cached prompts, so each copy does less work.',
+  peaks: 'each region sizes for its own busiest hour',
+  floor: 'each region needs at least one full model copy',
+  redundancy: 'each region keeps its own spare',
+  rounding: 'each region buys whole servers',
+  models: 'each region hosts every fine-tuned variant',
+  caches: 'smaller pools reuse fewer cached prompts',
 };
 
 function options(select, items, value) {
@@ -63,7 +63,7 @@ function writeForm() {
   $('cmLayers').value = cm.layers ?? 80;
   $('cmKv').value = cm.kvHeads ?? 8;
   $('cmHead').value = cm.headDim ?? 128;
-  options($('gpu'), data.gpus.gpus.map((g) => [g.id, `${g.name}${g.purchaseUnit === 'rack' ? ` (${g.gpusPerUnit}-GPU rack)` : ` (${g.gpusPerUnit}-GPU server)`}`]), s.gpu);
+  options($('gpu'), data.gpus.gpus.map((g) => [g.id, `${g.name.replace(/\s*\(.*\)\s*/g, '')} · ${g.gpusPerUnit}-GPU ${g.purchaseUnit === 'rack' ? 'rack' : 'server'}`]), s.gpu);
   const gpu = data.gpus.gpus.find((g) => g.id === s.gpu);
   if (!gpu.precisions.includes(s.precision)) s.precision = gpu.precisions.includes('FP8') ? 'FP8' : gpu.precisions[0];
   options($('precision'), gpu.precisions.map((p) => [p, p]), s.precision);
@@ -262,22 +262,22 @@ function render() {
 }
 
 function renderStatus(r) {
-  $('status').innerHTML = `<strong>${LABEL_TEXT[r.label]}</strong> · for planning, not a quote.${r.label === 'modeled' ? ' Throughput and hardware figures are modeled until benchmark results are added.' : ''}`;
+  $('status').innerHTML = `<strong>${LABEL_TEXT[r.label]}</strong> · for planning, not a quote`;
 }
 
 function renderHero(r) {
   const n = state.borders.length;
   const after = r.levers.some((l) => l.applied);
   const kw = (p) => `${fmt(p.it, 1)} kW`;
-  const sentence = r.tax.gpus === 0
-    ? `${n === 1 ? 'One region is the baseline' : `These ${n} regions need nothing extra`}: <b>${fmt(r.bordered.gpus)} GPUs</b> and ${kw(r.bordered.power)}, the same as one shared pool.`
-    : `${n} regions need <b>${fmt(r.bordered.gpus)} GPUs</b> and <b>${kw(r.bordered.power)}</b>. One shared pool serving the same demand needs <b>${fmt(r.shared.gpus)} GPUs</b> and ${kw(r.shared.power)}.${after ? ` The optimizations you turned on bring it to <b>${fmt(r.afterLevers.gpus)} GPUs</b>.` : ''}`;
+  const extraKw = r.bordered.power.it - r.shared.power.it;
+  const sub = r.tax.gpus
+    ? `+${pct(r.tax.pct)} vs one shared pool · +${fmt(extraKw, 1)} kW`
+    : `${n === 1 ? 'One region is the baseline' : 'Same as one shared pool'}`;
   const tile = (k, v, sub) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   $('hero').innerHTML = `
     <div class="what">Distribution overhead</div>
-    <div class="tax">+${fmt(r.tax.gpus)} GPUs${r.tax.gpus ? `<small>+${pct(r.tax.pct)} vs one shared pool</small>` : ''}</div>
-    <p class="sentence">${sentence}</p>
-    <div class="tiles">
+    <div class="tax">+${fmt(r.tax.gpus)} GPUs<small>${sub}</small></div>
+    <div class="tiles eng">
       ${tile(`With ${n} region${n === 1 ? '' : 's'}`, `${fmt(r.bordered.gpus)} GPUs`, `${fmt(r.bordered.units)} ${unitWord(r)} · ${kw(r.bordered.power)} · ${pct(r.bordered.utilAvg)} used on average`)}
       ${tile('One shared pool', `${fmt(r.shared.gpus)} GPUs`, `${kw(r.shared.power)} · ${pct(r.shared.utilAvg)} used on average`)}
       ${after
@@ -322,24 +322,16 @@ function renderSummaryChart(r) {
 
 function renderDrivers(r) {
   const causes = r.causes.filter((x) => x.gpus > 0).sort((a, b) => b.gpus - a.gpus).slice(0, 3);
-  const wins = r.levers.filter((l) => l.applied && l.gpus < 0).sort((a, b) => a.gpus - b.gpus);
-  if (!causes.length) {
-    $('drivers').innerHTML = '';
-    return;
-  }
-  $('drivers').innerHTML = `<h3>What drives the overhead</h3><ol>${causes.map((x) => `<li><span class="n">+${fmt(x.gpus)}</span> ${esc(x.name)}. <span class="hint">${esc(CAUSE_WHY[x.id])}</span></li>`).join('')}</ol>
-    ${wins.length ? `<p>Biggest saving: <strong>${esc(wins[0].name.toLowerCase())}</strong>, <span class="n">−${fmt(-wins[0].gpus)}</span> GPUs.</p>` : ''}`;
+  $('drivers').innerHTML = causes.length
+    ? `<h3>What drives it</h3><ul>${causes.map((x) => `<li><span class="n">+${fmt(x.gpus)}</span> ${esc(x.name)} <span class="hint">— ${esc(CAUSE_WHY[x.id])}</span></li>`).join('')}</ul>`
+    : '';
 }
 
 function renderCostLine(r) {
   const c = r.cost;
-  if (!c) {
-    $('costLine').textContent = '';
-    return;
-  }
-  const x = c.crossover;
-  const cross = !x ? 'Private doesn’t beat the API in the range checked.' : x.belowRange ? 'Private wins at any volume checked.' : `Private wins above about ${compact(x.tokensPerMonth)} tokens a month.`;
-  $('costLine').innerHTML = `At ${c.examplePrices ? 'example ' : ''}prices, private capacity across these regions runs about <b>${money(c.privateBordered, c.currency)}</b> a month, against ${money(c.api, c.currency)} for a public API on the same tokens. ${cross}${c.examplePrices ? ' <span class="hint">(Example prices, not quotes.)</span>' : ''}`;
+  $('costLine').innerHTML = c
+    ? `Monthly cost: <b>${money(c.privateBordered, c.currency)}</b> across these regions vs ${money(c.api, c.currency)} on a public API${c.examplePrices ? ' (example prices)' : ''}.`
+    : '';
 }
 
 function unitWord(r) {
@@ -572,7 +564,7 @@ function applyView() {
 function renderDataVersion() {
   const f = [data.gpus, data.models, data.throughput];
   const updated = f.map((x) => x.updated).sort().pop();
-  $('dataVersion').innerHTML = `Data version: GPUs ${esc(data.gpus.version)}, models ${esc(data.models.version)}, throughput ${esc(data.throughput.version)} · last updated ${esc(updated)} · <a href="../CHANGELOG.md">changelog</a>. `;
+  $('dataVersion').innerHTML = `Runs in your browser; nothing you enter leaves this page. Data ${esc(data.gpus.version)} · updated ${esc(updated)} · <a href="../CHANGELOG.md">changelog</a>`;
 }
 
 async function main() {

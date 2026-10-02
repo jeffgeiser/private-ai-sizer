@@ -2,6 +2,14 @@
 
 Data files and the engine are versioned separately. Data versions are `YYYY.MINOR.PATCH`; the engine follows the package version.
 
+## Page 0.4.1 — 2026-10-02
+
+- **Overview trimmed to the essentials:** the overhead number, its percent and extra kW, the three-bar chart, the top causes and a one-line monthly cost.
+  - The repeated summary sentence is gone.
+  - The three tiles, the requests hint and the cost break-even are in Engineering detail only.
+  - The intro, status line, Innovation Lab line and footer are each one line.
+- GPU names in the menu are shorter, e.g. "NVIDIA B300 · 8-GPU server".
+
 ## Page 0.4.0 — 2026-10-02
 
 - **Renamed to Distributed Private AI Sizer**, with consultative wording in place of the spec's terms:
