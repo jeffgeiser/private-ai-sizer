@@ -2,6 +2,15 @@
 
 Data files and the engine are versioned separately. Data versions are `YYYY.MINOR.PATCH`; the engine follows the package version.
 
+## Page 0.4.0 — 2026-10-02
+
+- **Renamed to Distributed Private AI Sizer**, with consultative wording in place of the spec's terms:
+  - "sovereignty tax" → **distribution overhead**
+  - "borders" → **regions**
+  - "levers" → **optimizations**; "after levers" → **optimized**
+- Cause and optimization names, preset names and the default region names follow the new wording.
+- The engine's result fields and the share-link format are unchanged, so links made earlier still open.
+
 ## Page 0.3.0 — 2026-10-02
 
 - **Two views.**

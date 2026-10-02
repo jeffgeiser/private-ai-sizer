@@ -1,7 +1,7 @@
 {
   "name": "private-ai-sizer",
-  "version": "0.3.0",
-  "description": "Sovereignty Tax Calculator: sizes private inference capacity across borders and shows what each border costs versus one shared pool.",
+  "version": "0.4.0",
+  "description": "Distributed Private AI Sizer: sizes private AI inference across regions, compares it with one shared pool, and shows how to optimize it.",
   "type": "module",
   "main": "src/engine.js",
   "exports": {

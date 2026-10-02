@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sovereignty Tax Calculator</title>
-<meta name="description" content="Size private inference capacity across borders and see what each border costs compared with one shared pool. Runs entirely in your browser.">
+<title>Distributed Private AI Sizer</title>
+<meta name="description" content="Size private AI inference across regions: see the capacity each region needs, how it compares with one shared pool, and how to optimize it. Runs entirely in your browser.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-view="overview">
 <header class="top">
   <div class="title">
-    <h1>Sovereignty Tax Calculator</h1>
-    <p class="lede">What do your borders cost in GPUs and power compared with one shared pool, and how much can you win back? Nothing you enter leaves this page.</p>
+    <h1>Distributed Private AI Sizer</h1>
+    <p class="lede">Size private AI across regions: the GPUs and power each one needs, how that compares with one shared pool, and how to optimize it. Nothing you enter leaves this page.</p>
   </div>
   <div class="view-toggle" role="group" aria-label="View">
     <button type="button" data-view="overview" aria-pressed="true">Overview</button>
@@ -47,18 +47,18 @@
     </fieldset>
 
     <fieldset>
-      <legend>Borders</legend>
+      <legend>Regions</legend>
       <label>Preset <select id="borderPreset"></select></label>
       <p class="summary" id="borderSummary"></p>
       <details id="borderEditor">
-        <summary>Edit borders</summary>
-        <div id="borders" class="borders" role="group" aria-label="Borders"></div>
-        <button type="button" id="addBorder" class="secondary">Add border</button>
+        <summary>Edit regions</summary>
+        <div id="borders" class="borders" role="group" aria-label="Regions"></div>
+        <button type="button" id="addBorder" class="secondary">Add region</button>
       </details>
     </fieldset>
 
     <fieldset>
-      <legend>Win back GPUs</legend>
+      <legend>Optimizations</legend>
       <div id="levers"></div>
     </fieldset>
 
@@ -135,7 +135,7 @@
       <button type="button" class="link ov" id="toggleBreakdown" aria-expanded="false" aria-controls="breakdown">Show the full breakdown</button>
 
       <section id="breakdown" class="breakdown">
-        <h2>Where the extra GPUs come from</h2>
+        <h2>Where the extra capacity goes</h2>
         <figure class="chart">
           <div id="waterfall"></div>
           <figcaption id="waterfallCaption"></figcaption>
@@ -149,12 +149,12 @@
       <div class="actions">
         <button type="button" id="copyLink">Copy link to this scenario</button>
         <button type="button" id="exportPng" class="secondary eng">Download waterfall (PNG)</button>
-        <button type="button" id="exportCsv" class="secondary eng">Download border table (CSV)</button>
+        <button type="button" id="exportCsv" class="secondary eng">Download region table (CSV)</button>
         <span id="copied" class="hint" role="status"></span>
       </div>
 
       <section class="eng">
-        <h2>Per border</h2>
+        <h2>Per region</h2>
         <div class="scroll"><table id="borderTable"></table></div>
 
         <h2>Cost and crossover</h2>

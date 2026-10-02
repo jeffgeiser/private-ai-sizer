@@ -1,6 +1,8 @@
-# Private AI Sizer — Sovereignty Tax Calculator
+# Distributed Private AI Sizer
 
-A browser-only calculator that sizes private inference capacity across one or more borders and shows what each border costs compared with one shared pool. Borders can be countries, business units, tenants or latency-driven regional pools.
+A browser-only calculator that sizes private AI inference across regions. It shows the capacity each region needs, how that compares with one shared pool, and how to optimize it. A region can be a country (data residency), a business unit or tenant, or a regional pool kept close to users for latency.
+
+The extra capacity that regions need over one shared pool is the **distribution overhead** (the spec calls it the "sovereignty tax"), and the ways to reduce it are **optimizations** (the spec's "levers"). In the code, the engine still uses the spec's names: `tax`, `borders`, `levers` and `afterLevers`.
 
 **This is a planning estimate, not a quote.** Every number carries a label: `measured` (our benchmark), `published` (vendor) or `modeled`. A result built from mixed inputs takes the weakest label. In this first release everything is `modeled`, because the benchmark results aren't in the data files yet.
 

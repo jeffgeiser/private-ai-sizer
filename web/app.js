@@ -36,11 +36,11 @@ const LABEL_TEXT = {
 };
 
 const CAUSE_WHY = {
-  peaks: 'Each border sizes for its own busiest hour instead of sharing peaks.',
-  floor: 'Every border needs at least one full model copy, however small its demand.',
-  redundancy: 'Every border carries its own spare copy.',
-  rounding: 'Each border buys whole servers, even when it needs a fraction of one.',
-  models: 'Every fine-tuned variant is deployed in every border.',
+  peaks: 'Each region sizes for its own busiest hour instead of sharing peaks.',
+  floor: 'Every region needs at least one full model copy, however small its demand.',
+  redundancy: 'Every region carries its own spare copy.',
+  rounding: 'Each region buys whole servers, even when it needs a fraction of one.',
+  models: 'Every fine-tuned variant is deployed in every region.',
   caches: 'Smaller pools reuse fewer cached prompts, so each copy does less work.',
 };
 
@@ -130,7 +130,7 @@ function writeBorderSummary() {
   const utc = (h) => `UTC${h < 0 ? '−' : '+'}${Math.abs(h)}`;
   const split = bs.length === 1 ? 'all demand' : equal ? 'equal split' : `${esc(bs[big].name)} ${pct(shares[big])} … ${esc(bs[small].name)} ${pct(shares[small])}`;
   const zones = lo === hi ? utc(lo) : `${utc(lo)} to ${utc(hi).slice(3)}`;
-  $('borderSummary').innerHTML = `<strong>${bs.length} border${bs.length === 1 ? '' : 's'}</strong> · ${split} · ${zones}`;
+  $('borderSummary').innerHTML = `<strong>${bs.length} region${bs.length === 1 ? '' : 's'}</strong> · ${split} · ${zones}`;
 }
 
 function writeBorders() {
@@ -138,11 +138,11 @@ function writeBorders() {
   const box = $('borders');
   box.innerHTML = state.borders.map((b, i) => `
     <div class="border" data-i="${i}">
-      <label>Name <input data-f="name" value="${esc(b.name)}" aria-label="Border ${i + 1} name"></label>
-      <label>UTC± <input data-f="tz" type="number" step="0.5" min="-12" max="14" value="${b.tz ?? 0}" aria-label="Border ${i + 1} time zone offset"></label>
-      <label>Share <input data-f="share" type="number" min="0" step="any" value="${b.share ?? 1}" aria-label="Border ${i + 1} share of demand"></label>
+      <label>Name <input data-f="name" value="${esc(b.name)}" aria-label="Region ${i + 1} name"></label>
+      <label>UTC± <input data-f="tz" type="number" step="0.5" min="-12" max="14" value="${b.tz ?? 0}" aria-label="Region ${i + 1} time zone offset"></label>
+      <label>Share <input data-f="share" type="number" min="0" step="any" value="${b.share ?? 1}" aria-label="Region ${i + 1} share of demand"></label>
       <button type="button" class="secondary" data-remove="${i}" aria-label="Remove border ${i + 1}"${state.borders.length <= 1 ? ' disabled' : ''}>×</button>
-      <label class="group">Jurisdiction group (borders in the same group can pool) <input data-f="group" value="${esc(b.group || '')}" placeholder="own" aria-label="Border ${i + 1} group"></label>
+      <label class="group">Jurisdiction group (regions in the same group can pool) <input data-f="group" value="${esc(b.group || '')}" placeholder="own" aria-label="Region ${i + 1} group"></label>
     </div>`).join('');
   $('addBorder').disabled = state.borders.length >= 20;
 }
@@ -179,7 +179,7 @@ function readForm() {
   document.querySelectorAll('#borders .border').forEach((row) => {
     const b = s.borders[Number(row.dataset.i)];
     const f = (k) => row.querySelector(`[data-f="${k}"]`).value;
-    b.name = f('name') || `Border ${Number(row.dataset.i) + 1}`;
+    b.name = f('name') || `Region ${Number(row.dataset.i) + 1}`;
     b.tz = Number(f('tz')) || 0;
     b.share = Math.max(0, Number(f('share')) || 0);
     const g = f('group').trim();
@@ -250,7 +250,7 @@ function render() {
   renderHero(r);
   $('warnings').innerHTML = r.warnings.map((x) => `<div class="warn">${esc(x)}</div>`).join('');
   const after = r.levers.some((l) => l.applied);
-  $('sticky').textContent = `Sovereignty tax: +${fmt(r.tax.gpus)} GPUs (+${pct(r.tax.pct)})${after ? ` · after levers ${signed(r.afterLevers.taxGpus)}` : ''}`;
+  $('sticky').textContent = `Distribution overhead: +${fmt(r.tax.gpus)} GPUs (+${pct(r.tax.pct)})${after ? ` · optimized ${signed(r.afterLevers.taxGpus)}` : ''}`;
 
   renderSummaryChart(r);
   renderDrivers(r);
@@ -270,23 +270,23 @@ function renderHero(r) {
   const after = r.levers.some((l) => l.applied);
   const kw = (p) => `${fmt(p.it, 1)} kW`;
   const sentence = r.tax.gpus === 0
-    ? `${n === 1 ? 'One border is the baseline' : `These ${n} borders cost nothing extra`}: <b>${fmt(r.bordered.gpus)} GPUs</b> and ${kw(r.bordered.power)}, the same as one shared pool.`
-    : `${n} borders need <b>${fmt(r.bordered.gpus)} GPUs</b> and <b>${kw(r.bordered.power)}</b>. One shared pool serving the same demand needs <b>${fmt(r.shared.gpus)} GPUs</b> and ${kw(r.shared.power)}.${after ? ` The levers you switched on bring it to <b>${fmt(r.afterLevers.gpus)} GPUs</b>.` : ''}`;
+    ? `${n === 1 ? 'One region is the baseline' : `These ${n} regions need nothing extra`}: <b>${fmt(r.bordered.gpus)} GPUs</b> and ${kw(r.bordered.power)}, the same as one shared pool.`
+    : `${n} regions need <b>${fmt(r.bordered.gpus)} GPUs</b> and <b>${kw(r.bordered.power)}</b>. One shared pool serving the same demand needs <b>${fmt(r.shared.gpus)} GPUs</b> and ${kw(r.shared.power)}.${after ? ` The optimizations you turned on bring it to <b>${fmt(r.afterLevers.gpus)} GPUs</b>.` : ''}`;
   const tile = (k, v, sub) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   $('hero').innerHTML = `
-    <div class="what">Sovereignty tax</div>
+    <div class="what">Distribution overhead</div>
     <div class="tax">+${fmt(r.tax.gpus)} GPUs${r.tax.gpus ? `<small>+${pct(r.tax.pct)} vs one shared pool</small>` : ''}</div>
     <p class="sentence">${sentence}</p>
     <div class="tiles">
-      ${tile(`With ${n} border${n === 1 ? '' : 's'}`, `${fmt(r.bordered.gpus)} GPUs`, `${fmt(r.bordered.units)} ${unitWord(r)} · ${kw(r.bordered.power)} · ${pct(r.bordered.utilAvg)} used on average`)}
+      ${tile(`With ${n} region${n === 1 ? '' : 's'}`, `${fmt(r.bordered.gpus)} GPUs`, `${fmt(r.bordered.units)} ${unitWord(r)} · ${kw(r.bordered.power)} · ${pct(r.bordered.utilAvg)} used on average`)}
       ${tile('One shared pool', `${fmt(r.shared.gpus)} GPUs`, `${kw(r.shared.power)} · ${pct(r.shared.utilAvg)} used on average`)}
       ${after
-        ? tile('After levers', `${fmt(r.afterLevers.gpus)} GPUs`, `${kw(r.afterLevers.power)} · tax ${signed(r.afterLevers.taxGpus)} GPUs`)
-        : tile('After levers', '–', 'Switch on a lever to win GPUs back')}
+        ? tile('Optimized', `${fmt(r.afterLevers.gpus)} GPUs`, `${kw(r.afterLevers.power)} · overhead ${signed(r.afterLevers.taxGpus)} GPUs`)
+        : tile('Optimized', '–', 'Turn on an optimization to reduce the overhead')}
     </div>`;
 }
 
-/** Overview chart: three bars, each split into the shared-pool need, the tax, and what the levers win back. */
+/** Overview chart: three bars, each split into the shared-pool need, the overhead, and what the optimizations save. */
 function renderSummaryChart(r) {
   const S = r.shared.gpus;
   const B = r.bordered.gpus;
@@ -294,9 +294,9 @@ function renderSummaryChart(r) {
   const after = r.levers.some((l) => l.applied);
   const rows = [
     { label: 'One shared pool', base: S, tax: 0, won: 0, total: S },
-    { label: `With ${state.borders.length} border${state.borders.length === 1 ? '' : 's'}`, base: S, tax: B - S, won: 0, total: B },
+    { label: `With ${state.borders.length} region${state.borders.length === 1 ? '' : 's'}`, base: S, tax: B - S, won: 0, total: B },
   ];
-  if (after) rows.push({ label: 'After levers', base: Math.min(A, S), tax: Math.max(0, A - S), won: B - A, total: A });
+  if (after) rows.push({ label: 'Optimized', base: Math.min(A, S), tax: Math.max(0, A - S), won: B - A, total: A });
   // Drawn at the container's real width so labels stay legible on a phone.
   const W = Math.max(300, Math.min(900, $('summaryChart').clientWidth || 860));
   const rowH = 46;
@@ -317,7 +317,7 @@ function renderSummaryChart(r) {
   });
   $('summaryChart').innerHTML = svg + '</svg>';
   const key = (color, text, outline) => `<span><i style="${outline ? `border:2px dashed ${color};width:8px;height:8px` : `background:${color}`}"></i>${text}</span>`;
-  $('summaryLegend').innerHTML = key(c.base, 'What one shared pool needs') + (B > S ? key(c.tax, 'Sovereignty tax') : '') + (after ? key(c.won, 'Won back by levers', true) : '');
+  $('summaryLegend').innerHTML = key(c.base, 'What one shared pool needs') + (B > S ? key(c.tax, 'Distribution overhead') : '') + (after ? key(c.won, 'Saved by optimizations', true) : '');
 }
 
 function renderDrivers(r) {
@@ -327,8 +327,8 @@ function renderDrivers(r) {
     $('drivers').innerHTML = '';
     return;
   }
-  $('drivers').innerHTML = `<h3>What drives the tax</h3><ol>${causes.map((x) => `<li><span class="n">+${fmt(x.gpus)}</span> ${esc(x.name)}. <span class="hint">${esc(CAUSE_WHY[x.id])}</span></li>`).join('')}</ol>
-    ${wins.length ? `<p>Biggest win back: <strong>${esc(wins[0].name.toLowerCase())}</strong>, <span class="n">−${fmt(-wins[0].gpus)}</span> GPUs.</p>` : ''}`;
+  $('drivers').innerHTML = `<h3>What drives the overhead</h3><ol>${causes.map((x) => `<li><span class="n">+${fmt(x.gpus)}</span> ${esc(x.name)}. <span class="hint">${esc(CAUSE_WHY[x.id])}</span></li>`).join('')}</ol>
+    ${wins.length ? `<p>Biggest saving: <strong>${esc(wins[0].name.toLowerCase())}</strong>, <span class="n">−${fmt(-wins[0].gpus)}</span> GPUs.</p>` : ''}`;
 }
 
 function renderCostLine(r) {
@@ -339,7 +339,7 @@ function renderCostLine(r) {
   }
   const x = c.crossover;
   const cross = !x ? 'Private doesn’t beat the API in the range checked.' : x.belowRange ? 'Private wins at any volume checked.' : `Private wins above about ${compact(x.tokensPerMonth)} tokens a month.`;
-  $('costLine').innerHTML = `At ${c.examplePrices ? 'example ' : ''}prices, private capacity with borders runs about <b>${money(c.privateBordered, c.currency)}</b> a month, against ${money(c.api, c.currency)} for a public API on the same tokens. ${cross}${c.examplePrices ? ' <span class="hint">(Example prices, not quotes.)</span>' : ''}`;
+  $('costLine').innerHTML = `At ${c.examplePrices ? 'example ' : ''}prices, private capacity across these regions runs about <b>${money(c.privateBordered, c.currency)}</b> a month, against ${money(c.api, c.currency)} for a public API on the same tokens. ${cross}${c.examplePrices ? ' <span class="hint">(Example prices, not quotes.)</span>' : ''}`;
 }
 
 function unitWord(r) {
@@ -354,14 +354,14 @@ function waterfallBars(r) {
     bars.push({ name: c.name, kind: 'cause', from: y, to: y + c.gpus, delta: c.gpus });
     y += c.gpus;
   }
-  bars.push({ name: 'With borders', kind: 'total', from: 0, to: r.bordered.gpus });
+  bars.push({ name: 'With regions', kind: 'total', from: 0, to: r.bordered.gpus });
   const on = r.levers.filter((l) => state.levers[l.id]);
   if (on.length) {
     for (const l of on) {
       bars.push({ name: l.name, kind: 'lever', from: y, to: y + l.gpus, delta: l.gpus, note: l.applied ? '' : l.note });
       y += l.gpus;
     }
-    bars.push({ name: 'After levers', kind: 'total', from: 0, to: r.afterLevers.gpus });
+    bars.push({ name: 'Optimized', kind: 'total', from: 0, to: r.afterLevers.gpus });
   }
   return bars;
 }
@@ -393,7 +393,7 @@ function renderWaterfall(r) {
   const colors = { total: cssVar('--total'), cause: cssVar('--cause'), lever: cssVar('--lever'), text: cssVar('--text'), muted: cssVar('--muted'), line: cssVar('--line'), bg: cssVar('--bg') };
   const ticks = Array.from({ length: 5 }, (_, i) => (nice / 4) * i);
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="wfTitle wfDesc" font-family="system-ui, sans-serif">
-    <title id="wfTitle">Sovereignty tax waterfall</title>
+    <title id="wfTitle">Distribution overhead waterfall</title>
     <desc id="wfDesc">${esc(bars.map((b) => `${b.name}: ${b.kind === 'total' ? fmt(b.to) + ' GPUs' : (b.delta >= 0 ? '+' : '') + fmt(b.delta)}`).join('; '))}</desc>
     <rect width="${W}" height="${H}" fill="${colors.bg}"/>`;
   for (const t of ticks) {
@@ -415,7 +415,7 @@ function renderWaterfall(r) {
   });
   svg += `<text x="${m.l}" y="14" font-size="11" fill="${colors.muted}">GPUs</text></svg>`;
   $('waterfall').innerHTML = svg;
-  $('waterfallCaption').textContent = `From one shared pool of ${fmt(r.shared.gpus)} GPUs up through each cause to ${fmt(r.bordered.gpus)} GPUs with borders${r.levers.some((l) => state.levers[l.id]) ? `, then down through the levers you switched on to ${fmt(r.afterLevers.gpus)}` : ''}.`;
+  $('waterfallCaption').textContent = `From one shared pool of ${fmt(r.shared.gpus)} GPUs up through each cause to ${fmt(r.bordered.gpus)} GPUs across regions${r.levers.some((l) => state.levers[l.id]) ? `, then down through the optimizations you turned on to ${fmt(r.afterLevers.gpus)}` : ''}.`;
   $('waterfallTable').innerHTML = `<thead><tr><th>Step</th><th>GPUs</th><th>Running total</th><th>Note</th></tr></thead><tbody>${bars.map((b) => `<tr><td>${esc(b.name)}</td><td>${b.kind === 'total' ? '' : (b.delta > 0 ? '+' : '') + fmt(b.delta)}</td><td>${fmt(b.to)}</td><td>${esc(b.note || '')}</td></tr>`).join('')}</tbody>`;
 }
 
@@ -427,7 +427,7 @@ function niceMax(v) {
 
 function borderRows(r) {
   return r.borders.map((b) => ({
-    Border: b.name,
+    Region: b.name,
     'Demand share': b.share,
     Copies: b.copies,
     GPUs: b.gpus,
@@ -443,8 +443,8 @@ function renderBorders(r) {
   const rows = borderRows(r);
   const cols = Object.keys(rows[0]);
   const cell = (k, v) => (k.includes('share') || k.includes('utilization') ? pct(v, k.includes('utilization') && v < 0.1 ? 1 : 0) : k.includes('kW') ? fmt(v, 1) : typeof v === 'number' ? fmt(v) : esc(v));
-  const total = { Border: 'Total', 'Demand share': 1, Copies: r.borders.reduce((a, b) => a + b.copies, 0), GPUs: r.bordered.gpus, [cols[4]]: r.bordered.units, 'Avg utilization': r.bordered.utilAvg, 'Peak utilization': r.bordered.utilPeak, 'IT kW': r.bordered.power.it, 'Facility kW': r.bordered.power.facility };
-  $('borderTable').innerHTML = `<caption class="hint">Copies include ${state.advanced.redundancy} spare${state.advanced.redundancy === 1 ? '' : 's'} per ${r.throughput && state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? 'variant per ' : ''}border.</caption>
+  const total = { Region: 'Total', 'Demand share': 1, Copies: r.borders.reduce((a, b) => a + b.copies, 0), GPUs: r.bordered.gpus, [cols[4]]: r.bordered.units, 'Avg utilization': r.bordered.utilAvg, 'Peak utilization': r.bordered.utilPeak, 'IT kW': r.bordered.power.it, 'Facility kW': r.bordered.power.facility };
+  $('borderTable').innerHTML = `<caption class="hint">Copies include ${state.advanced.redundancy} spare${state.advanced.redundancy === 1 ? '' : 's'} per ${r.throughput && state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? 'variant per ' : ''}region.</caption>
     <thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((row) => `<tr>${cols.map((c) => `<td>${cell(c, row[c])}</td>`).join('')}</tr>`).join('')}</tbody>
     <tfoot><tr>${cols.map((c) => `<td>${cell(c, total[c])}</td>`).join('')}</tr></tfoot>`;
@@ -469,13 +469,13 @@ function renderCost(r) {
     ? 'Private capacity isn’t cheaper than the API anywhere from 1/1000× to 1000× this demand.'
     : x.belowRange
       ? 'Private capacity is cheaper than the API even at 1/1000 of this demand.'
-      : `Private capacity with these borders becomes cheaper above about <strong>${compact(x.tokensPerMonth)} tokens per month</strong> (this scenario: ${compact(c.tokensPerMonth)}).`;
+      : `Private capacity across these regions becomes cheaper above about <strong>${compact(x.tokensPerMonth)} tokens per month</strong> (this scenario: ${compact(c.tokensPerMonth)}).`;
   $('cost').innerHTML = `
     ${c.examplePrices ? '<p class="warn">Example prices, for illustration only. They are not quotes or vendor list prices; enter your own in Advanced.</p>' : ''}
     <table><thead><tr><th>Monthly cost</th><th>${esc(c.currency)}</th></tr></thead><tbody>
-      <tr><td>Private, with borders</td><td>${money(c.privateBordered, c.currency)}</td></tr>
+      <tr><td>Private, across regions</td><td>${money(c.privateBordered, c.currency)}</td></tr>
       <tr><td>Private, one shared pool</td><td>${money(c.privateShared, c.currency)}</td></tr>
-      ${r.levers.some((l) => l.applied) ? `<tr><td>Private, after levers</td><td>${money(c.privateAfterLevers, c.currency)}</td></tr>` : ''}
+      ${r.levers.some((l) => l.applied) ? `<tr><td>Private, optimized</td><td>${money(c.privateAfterLevers, c.currency)}</td></tr>` : ''}
       <tr><td>Public API, same tokens</td><td>${money(c.api, c.currency)}</td></tr>
     </tbody></table>
     <p>${crossoverText}</p>`;
@@ -486,14 +486,14 @@ function renderExplain(r) {
   const tp = r.throughput.pooled;
   const w = r.workload;
   $('explain').innerHTML = `<dl>
-    <dt>GPUs per model copy: ${r.g === r.gShared ? r.g : `${r.g} in each border, ${r.gShared} in the shared pool`}</dt>
+    <dt>GPUs per model copy: ${r.g === r.gShared ? r.g : `${r.g} in each region, ${r.gShared} in the shared pool`}</dt>
     <dd>${state.advanced.gpusPerCopy && state.advanced.gpusPerCopy !== 'auto'
       ? `Pinned to ${r.g} in Advanced.`
-      : `Every size of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${w.targetConcurrency} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU is sized, and the shared pool and the borders each keep their cheapest:`}</dd>
-    ${r.tpOptions.length > 1 ? `<dd><table><thead><tr><th>GPUs per copy</th><th>Shared pool</th><th>With borders</th></tr></thead><tbody>${r.tpOptions.map((o) => `<tr><td>${o.g}</td><td>${fmt(o.shared)}${o.g === r.gShared ? ' ✓' : ''}</td><td>${fmt(o.bordered)}${o.g === r.g ? ' ✓' : ''}</td></tr>`).join('')}</tbody></table></dd>` : ''}
-    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${r.g}-GPU border copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${r.gShared}-GPU shared copy`}</dt>
+      : `Every size of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${w.targetConcurrency} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU is sized, and the shared pool and the regions each keep their cheapest:`}</dd>
+    ${r.tpOptions.length > 1 ? `<dd><table><thead><tr><th>GPUs per copy</th><th>Shared pool</th><th>With regions</th></tr></thead><tbody>${r.tpOptions.map((o) => `<tr><td>${o.g}</td><td>${fmt(o.shared)}${o.g === r.gShared ? ' ✓' : ''}</td><td>${fmt(o.bordered)}${o.g === r.g ? ' ✓' : ''}</td></tr>`).join('')}</tbody></table></dd>` : ''}
+    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${r.g}-GPU region copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${r.gShared}-GPU shared copy`}</dt>
     <dd>${esc(t.rule)}. At ${t.concurrency} concurrent requests: about ${fmt(t.perUserTokPerSec)} tokens/s per user (target ${w.outputTokensPerSecPerUser}), about ${fmt(t.ttftMs)} ms unloaded time to first token (target ${w.ttftMsP95} ms p95). Cache hit ${pct(r.hit.pooled)} pooled, ${pct(r.hit.split)} split.${t.adapterFactor ? ` Adapters cost ${pct(1 - t.adapterFactor, 1)} of throughput.` : ''}</dd>
-    <dt>Copies per border</dt>
+    <dt>Copies per region</dt>
     <dd>max(1, ⌈peak × (1 + ${pct(state.advanced.headroom)}) ÷ R⌉) + ${state.advanced.redundancy}, then × GPUs per copy${state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? ` for each of ${state.advanced.variants} variants` : ''}, rounded up to ${r.unit} GPU${r.unit === 1 ? '' : 's'}.</dd>
     <dt>Data labels</dt>
     <dd>Results take the weakest label of their inputs: ${LABEL_TEXT[r.label].toLowerCase()}. GPU (${esc(r.gpu.name)}): ${esc(gpuLabels(r.gpu))}. Model: ${esc(r.model.label)}. Throughput: ${esc(r.labels.throughput)}. Workload shape and cache hit rates: ${esc(r.workload.label)}. Prices: example values unless you entered your own.</dd>
@@ -534,7 +534,7 @@ function exportPng() {
     const ctx = c.getContext('2d');
     ctx.scale(2, 2);
     ctx.drawImage(img, 0, 0, W, H);
-    c.toBlob((b) => download('sovereignty-tax-waterfall.png', b), 'image/png');
+    c.toBlob((b) => download('distribution-overhead-waterfall.png', b), 'image/png');
   };
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
 }
@@ -545,7 +545,7 @@ function exportCsv() {
   const cols = Object.keys(rows[0]);
   const q = (v) => (v == null ? '' : typeof v === 'number' ? String(+v.toFixed(4)) : `"${String(v).replace(/"/g, '""')}"`);
   const csv = [cols.map(q).join(','), ...rows.map((r) => cols.map((c) => q(r[c])).join(','))].join('\n');
-  download('sovereignty-tax-borders.csv', new Blob([csv], { type: 'text/csv' }));
+  download('distribution-overhead-regions.csv', new Blob([csv], { type: 'text/csv' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -622,7 +622,7 @@ async function main() {
   });
   $('addBorder').addEventListener('click', () => {
     if (state.borders.length >= 20) return;
-    state.borders.push({ name: `Border ${state.borders.length + 1}`, tz: 0, share: 1 });
+    state.borders.push({ name: `Region ${state.borders.length + 1}`, tz: 0, share: 1 });
     writeBorders();
     render();
   });

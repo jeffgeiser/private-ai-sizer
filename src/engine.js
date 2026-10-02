@@ -1,4 +1,4 @@
-// Sovereignty Tax Calculator — sizing engine.
+// Distributed Private AI Sizer — sizing engine.
 //
 // Pure functions only: no DOM, no network, no clock. Every function takes the
 // scenario and the reference data explicitly, so each step can be unit-tested
@@ -15,16 +15,16 @@ export const LABEL_RANK = { measured: 3, published: 2, modeled: 1 };
 
 export const CAUSES = [
   { id: 'peaks', name: 'Peaks that don’t coincide' },
-  { id: 'floor', name: 'Per-border floor' },
-  { id: 'redundancy', name: 'Redundancy in every border' },
+  { id: 'floor', name: 'Minimum deployment per region' },
+  { id: 'redundancy', name: 'A spare in every region' },
   { id: 'rounding', name: 'Purchase-unit rounding' },
   { id: 'models', name: 'Duplicated models' },
   { id: 'caches', name: 'Fragmented caches' },
 ];
 
 export const LEVERS = [
-  { id: 'burst', name: 'Burst data allowed to leave' },
-  { id: 'pool', name: 'Pool demand inside each border' },
+  { id: 'burst', name: 'Burst work that may leave its region' },
+  { id: 'pool', name: 'Pool regions in the same jurisdiction' },
   { id: 'units', name: 'Buy in smaller units' },
   { id: 'rightsize', name: 'Right-size the model' },
   { id: 'adapters', name: 'Serve variants as adapters' },
@@ -352,7 +352,7 @@ export function buildContext(scenario, data, gAt) {
     };
   }
   const borders = hourlyDemand(scenario, workload);
-  if (!borders.length) return { error: 'Add at least one border.' };
+  if (!borders.length) return { error: 'Add at least one region.' };
   const pooledCurve = sumCurves(borders.map((b) => b.curve));
   const variants = { count: Math.max(1, Math.round(o.variants || 1)), mode: o.variantMode || 'separate' };
   const B = borders.length;
@@ -560,7 +560,7 @@ export function applyLevers(scenario, data, ctx, borderedGpus) {
     }
     const t = evaluate(next);
     if (t == null) {
-      steps.push({ ...lever, gpus: 0, applied: false, note: 'Model doesn’t fit with this lever' });
+      steps.push({ ...lever, gpus: 0, applied: false, note: 'Model doesn’t fit with this optimization' });
     } else if (t > total) {
       steps.push({ ...lever, gpus: 0, applied: false, note: `Would add ${t - total} GPUs here, so it isn’t applied` });
     } else {
@@ -585,9 +585,9 @@ export function applyLevers(scenario, data, ctx, borderedGpus) {
 
   tryLever(LEVERS[1], (s) => {
     const groups = new Set(s.borders.map((b, i) => b.group || b.name || `#${i}`));
-    if (groups.size === s.borders.length) return { skip: 'Every border is its own jurisdiction; give borders the same group to pool them' };
+    if (groups.size === s.borders.length) return { skip: 'Every region is its own jurisdiction; give regions the same group to pool them' };
     s.poolGroups = true;
-    return { ok: `${s.borders.length} borders pooled into ${groups.size}` };
+    return { ok: `${s.borders.length} regions pooled into ${groups.size}` };
   }, evaluate);
 
   tryLever(LEVERS[2], (s) => {

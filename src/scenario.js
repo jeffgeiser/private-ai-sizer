@@ -39,8 +39,8 @@ const equal = (names, tzs) => names.map((name, i) => ({ name, tz: tzs[i], share:
 export const BORDER_PRESETS = [
   {
     id: 'default',
-    name: 'Six borders, equal split',
-    borders: equal(['Border 1', 'Border 2', 'Border 3', 'Border 4', 'Border 5', 'Border 6'], [0, 1, 1, 1, 2, 3]),
+    name: 'Six regions, equal split',
+    borders: equal(['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'Region 6'], [0, 1, 1, 1, 2, 3]),
   },
   { id: 'single', name: 'Single region (baseline)', borders: [{ name: 'Single region', tz: 1, share: 1 }] },
   {
@@ -73,7 +73,7 @@ export const BORDER_PRESETS = [
   },
   {
     id: 'units',
-    name: 'Separate business units in one country',
+    name: 'Separate business units, one region each',
     borders: [
       { name: 'Retail banking', tz: 1, share: 40, group: 'Same country' },
       { name: 'Wealth', tz: 1, share: 25, group: 'Same country' },
