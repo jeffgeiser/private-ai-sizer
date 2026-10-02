@@ -55,6 +55,55 @@ const result = calculate(defaultScenario(), { gpus, models, throughput });
 
 `calculate` returns `{ error }` instead of numbers when the model doesn't fit the GPU or the precision isn't supported.
 
+## Building your own page on the engine
+
+The branded page lives in its own repo and uses a tagged release of this one. Treat `src/` and `data/` as read-only: if a number looks wrong, open an issue here, so every page shows the same math.
+
+**1. Pin a release.** Each tag (`v0.5.0`, …) is a fixed, reviewed version of the engine and data. Bring it in one of three ways:
+
+```sh
+npm install github:jeffgeiser/private-ai-sizer#v0.5.0   # or the org's path once the repo moves
+```
+
+- Copy `src/` and `data/` from the tag into your site, for example under `/vendor/private-ai-sizer/`.
+- If the repo is public, load the files from jsDelivr at a pinned tag: `https://cdn.jsdelivr.net/gh/<owner>/private-ai-sizer@v0.5.0/src/engine.js`.
+
+**2. Load the data and calculate.** Everything runs in the browser.
+
+```js
+import { calculate } from './vendor/private-ai-sizer/src/engine.js';
+import { defaultScenario, applyBorderPreset, encodeScenario, decodeScenario } from './vendor/private-ai-sizer/src/scenario.js';
+
+const load = (f) => fetch(`./vendor/private-ai-sizer/data/${f}`).then((r) => r.json());
+const data = { gpus: await load('gpus.json'), models: await load('models.json'), throughput: await load('throughput.json') };
+
+const scenario = decodeScenario(location.hash) ?? applyBorderPreset(defaultScenario(), 'europe5');
+const r = calculate(scenario, data);
+if (r.error) showMessage(r.error);            // e.g. the model doesn't fit the GPU
+```
+
+**3. Show the results.** The engine's field names come from the spec; the page uses friendlier words:
+
+| On the page | In the result |
+| --- | --- |
+| Distribution overhead | `r.tax.gpus`, `r.tax.pct` (a fraction: 4 = +400%) |
+| One shared pool | `r.shared.gpus`, `r.shared.power.it` (kW) |
+| With N regions | `r.bordered.gpus`, `r.bordered.power.it` |
+| Optimized | `r.afterLevers.gpus` |
+| What drives it | `r.causes` (six steps, `{ id, name, gpus }`) |
+| Optimizations | `r.levers` (`{ id, name, gpus, applied, note }`) |
+| Per region | `r.borders` (GPUs, servers, utilization, power) |
+| Data label | `r.label`: `measured`, `published` or `modeled` |
+
+`web/app.js` is a working example of every one of these.
+
+**4. Keep the page's promises.**
+- Show the data label once, near the results. For example: "Modeled estimate · for planning, not a quote".
+- Never send what users enter anywhere. Page analytics may record visits and clicks, but not input values.
+- Keep shareable scenarios in the URL fragment with `encodeScenario` and `decodeScenario`. Browsers never send the fragment to a server.
+
+**5. Upgrade on purpose.** Read `CHANGELOG.md`, bump the tag, and check the page. Data refreshes, such as the benchmark results when they land, arrive as new tags.
+
 ## Sizing model
 
 1. **Hourly demand per border.** Daily demand spread over 24 hours by the demand shape, shifted by each border's UTC offset (half-hour zones are interpolated).
