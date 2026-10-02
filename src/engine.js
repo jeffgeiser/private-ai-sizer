@@ -196,23 +196,24 @@ export function maxConcurrencyThatFits(model, gpu, precision, workload, g, data)
 }
 
 /**
- * Smallest tensor-parallel size g in {1,2,4,8} where weights plus the KV
- * cache for the target concurrency fit in ~90% of GPU memory:
+ * Every tensor-parallel size g in {1,2,4,8} where weights plus the KV cache
+ * for the target concurrency fit in ~90% of GPU memory:
  *   g * M_gpu * 0.9 >= P*b + c*L*2*n_layers*n_kv*d_head*b_kv
- * Returns null when no size fits.
+ * Ascending; empty when no size fits. An override pins one size, which only
+ * has to hold the weights plus one request.
  */
-export function gpusPerCopy(model, gpu, precision, workload, data, override) {
-  const c = workload.targetConcurrency;
-  const sizes = TP_SIZES.filter((g) => g <= Math.max(8, gpu.gpusPerUnit) && g <= gpu.gpusPerUnit);
+export function fittingTpSizes(model, gpu, precision, workload, data, override) {
   if (override && override !== 'auto') {
     const g = Number(override);
-    if (maxConcurrencyThatFits(model, gpu, precision, workload, g, data) < 1) return null;
-    return g;
+    return maxConcurrencyThatFits(model, gpu, precision, workload, g, data) >= 1 ? [g] : [];
   }
-  for (const g of sizes) {
-    if (g * gpu.memoryGB * data.throughput.scaling.memoryFitFraction >= memoryNeedGB(model, precision, workload, c, data)) return g;
-  }
-  return null;
+  const need = memoryNeedGB(model, precision, workload, workload.targetConcurrency, data);
+  return TP_SIZES.filter((g) => g <= gpu.gpusPerUnit && g * gpu.memoryGB * data.throughput.scaling.memoryFitFraction >= need);
+}
+
+/** Smallest fitting tensor-parallel size, or null. */
+export function gpusPerCopy(model, gpu, precision, workload, data, override) {
+  return fittingTpSizes(model, gpu, precision, workload, data, override)[0] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -328,10 +329,11 @@ export function throughputPerCopy({ model, gpu, precision, workload, g, cacheHit
 // Steps 4–7. Copies, GPUs, shared pool, tax and waterfall
 
 /**
- * Build the sizing context for a scenario: everything that doesn't depend on
- * how constraints are toggled.
+ * Build the sizing context for a scenario at one tensor-parallel size:
+ * everything that doesn't depend on how constraints are toggled. Without g,
+ * the smallest fitting size is used; tpContexts builds one per fitting size.
  */
-export function buildContext(scenario, data) {
+export function buildContext(scenario, data, gAt) {
   const model = resolveModel(scenario, data);
   const gpu = resolveGpu(scenario, data);
   const workload = resolveWorkload(scenario, data);
@@ -340,7 +342,9 @@ export function buildContext(scenario, data) {
   if (!gpu.precisions.includes(precision)) {
     return { error: `${gpu.name} doesn't support ${precision}. Supported: ${gpu.precisions.join(', ')}.` };
   }
-  const g = gpusPerCopy(model, gpu, precision, workload, data, o.gpusPerCopy);
+  const tpSizes = fittingTpSizes(model, gpu, precision, workload, data, o.gpusPerCopy);
+  if (gAt != null && !tpSizes.includes(gAt)) return { error: `${gAt} GPUs per copy doesn\u2019t fit ${model.name} at ${precision}.` };
+  const g = gAt ?? tpSizes[0];
   if (!g) {
     return {
       error: `${model.name} at ${precision} doesn't fit on up to 8 × ${gpu.name} (${gpu.memoryGB} GB each) with room for its KV cache. Try lower precision, a GPU with more memory, or a smaller model.`,
@@ -358,7 +362,7 @@ export function buildContext(scenario, data) {
   const pooled = tp(hitPooled);
   const split = B > 1 ? tp(hitSplit) : pooled;
   return {
-    model, gpu, workload, precision, g, variants, borders,
+    model, gpu, workload, precision, g, tpSizes, variants, borders,
     groups: scenario.borders.map((b, i) => b.group || b.name || `#${i}`),
     pooledCurve,
     pooledPeak: Math.max(...pooledCurve),
@@ -371,6 +375,29 @@ export function buildContext(scenario, data) {
     hit: { pooled: hitPooled, split: hitSplit },
   };
 }
+
+/** One context per fitting tensor-parallel size, or { error }. */
+export function tpContexts(scenario, data) {
+  const first = buildContext(scenario, data);
+  if (first.error) return first;
+  return first.tpSizes.map((g) => (g === first.g ? first : buildContext(scenario, data, g)));
+}
+
+/**
+ * The context whose GPUs (from fn) are lowest. Ties go to the smaller
+ * tensor-parallel size, since contexts come in ascending order.
+ */
+export function cheapest(ctxs, fn) {
+  let best = null;
+  for (const ctx of ctxs) {
+    const gpus = fn(ctx);
+    if (!best || gpus < best.gpus) best = { ctx, gpus };
+  }
+  return best;
+}
+
+const sharedGpus = (ctx) => sizeSharedPool(ctx).gpus;
+const borderGpus = (ctx) => sum(sizeBorders(ctx).map((b) => b.gpus));
 
 function clamp01(x) {
   return Math.min(1, Math.max(0, Number(x) || 0));
@@ -447,14 +474,20 @@ export function waterfallState(ctx, k) {
 }
 
 /**
+ * The shared pool and the borders each use their own cheapest
+ * tensor-parallel size, so states 0–1 (still pooled) use the shared pool's
+ * context and states 2–6 the borders'. Any change in copy size lands in the
+ * per-border floor step, which is what drives it: small borders favour small
+ * copies because each pays its own floor and spares.
+ *
  * The raw states can dip where ceilings interact (a shared pool's rounding
- * slack, or variants whose fractional copies happen to align). Bordered is
- * always >= shared, so each intermediate state is clamped between the
- * previous state and the bordered total: every step is non-negative, and the
- * steps still sum exactly to bordered minus shared.
+ * slack, variants whose fractional copies happen to align, or the switch in
+ * copy size). Bordered is always >= shared, so each intermediate state is
+ * clamped between the previous state and the bordered total: every step is
+ * non-negative, and the steps still sum exactly to bordered minus shared.
  */
-export function waterfall(ctx) {
-  const raw = Array.from({ length: 7 }, (_, k) => waterfallState(ctx, k));
+export function waterfall(sharedCtx, borderCtx = sharedCtx) {
+  const raw = Array.from({ length: 7 }, (_, k) => waterfallState(k < 2 ? sharedCtx : borderCtx, k));
   const states = [raw[0]];
   for (let k = 1; k < 6; k++) states.push(Math.min(raw[6], Math.max(states[k - 1], raw[k])));
   states.push(raw[6]);
@@ -478,22 +511,26 @@ export function defaultRightSizeTarget(scenario, data) {
   return smaller[0]?.id ?? null;
 }
 
-/** Bordered GPUs for a scenario (no levers). Null when the model doesn't fit. */
+/** Bordered GPUs for a scenario (no levers), at the cheapest fitting size. Null when the model doesn't fit. */
 export function borderedTotal(scenario, data) {
-  const ctx = buildContext(scenario, data);
-  if (ctx.error) return null;
-  return sum(sizeBorders(ctx).map((b) => b.gpus));
+  const ctxs = tpContexts(scenario, data);
+  if (ctxs.error) return null;
+  return cheapest(ctxs, borderGpus).gpus;
 }
 
 function cloneScenario(s) {
   return JSON.parse(JSON.stringify(s));
 }
 
-/** In-border GPUs, with borders that share a group pooled when the pool lever is on. */
+/** In-border GPUs at the cheapest fitting size, with same-group borders pooled when the pool lever is on. */
 export function inBorderTotal(scenario, data) {
-  const ctx = buildContext(scenario, data);
-  if (ctx.error) return null;
-  if (!scenario.poolGroups) return sum(sizeBorders(ctx).map((b) => b.gpus));
+  const ctxs = tpContexts(scenario, data);
+  if (ctxs.error) return null;
+  return cheapest(ctxs, (ctx) => inBorderGpus(scenario, ctx)).gpus;
+}
+
+function inBorderGpus(scenario, ctx) {
+  if (!scenario.poolGroups) return borderGpus(ctx);
   const keys = [...new Set(ctx.groups)];
   const rps = keys.length === 1 ? ctx.throughput.pooled.rps : ctx.throughput.split.rps;
   return sum(keys.map((key) => {
@@ -581,10 +618,10 @@ export function applyLevers(scenario, data, ctx, borderedGpus) {
 export function burstPoolGpus(s, data) {
   const share = s.burstShare || 0;
   if (share <= 0) return 0;
-  const ctx = buildContext({ ...s, burstShare: 0 }, data);
-  if (ctx.error) return 0;
-  const peak = ctx.pooledPeak * Math.min(1, share);
-  return ceilTo(copiesForPool(peak, ctx, ctx.throughput.pooled.rps) * ctx.g, ctx.unit);
+  const ctxs = tpContexts({ ...s, burstShare: 0 }, data);
+  if (ctxs.error) return 0;
+  const at = (ctx) => ceilTo(copiesForPool(ctx.pooledPeak * Math.min(1, share), ctx, ctx.throughput.pooled.rps) * ctx.g, ctx.unit);
+  return cheapest(ctxs, at).gpus;
 }
 
 // ---------------------------------------------------------------------------
@@ -670,14 +707,18 @@ export function crossover(scenario, data, prices) {
 
 /** Full calculation for the page. */
 export function calculate(scenario, data) {
-  const ctx = buildContext(scenario, data);
-  if (ctx.error) return { error: ctx.error };
-  const wf = waterfall(ctx);
+  const ctxs = tpContexts(scenario, data);
+  if (ctxs.error) return { error: ctxs.error };
+  // The shared pool and the borders each keep their cheapest fitting size.
+  const sharedCtx = cheapest(ctxs, sharedGpus).ctx;
+  const ctx = cheapest(ctxs, borderGpus).ctx;
+  const wf = waterfall(sharedCtx, ctx);
   const borders = borderDetails(ctx);
-  const shared = sizeSharedPool(ctx);
+  const shared = sizeSharedPool(sharedCtx);
   const levers = applyLevers(scenario, data, ctx, wf.bordered);
+  const tpOptions = ctxs.map((c) => ({ g: c.g, shared: sharedGpus(c), bordered: borderGpus(c) }));
 
-  const throughputLabel = weakestLabel(ctx.throughput.pooled.label, ctx.throughput.split.label);
+  const throughputLabel = weakestLabel(sharedCtx.throughput.pooled.label, ctx.throughput.split.label);
   const label = weakestLabel(
     throughputLabel,
     ctx.gpu.label,
@@ -690,7 +731,7 @@ export function calculate(scenario, data) {
 
   const totalAvgGpuEq = sum(borders.map((b) => b.demandGpusAvg));
   const totalPeakGpuEq = sum(borders.map((b) => b.demandGpusPeak));
-  const sharedRps = ctx.throughput.pooled.rps;
+  const sharedRps = sharedCtx.throughput.pooled.rps;
 
   const prices = scenario.advanced?.prices;
   let cost = null;
@@ -713,17 +754,21 @@ export function calculate(scenario, data) {
   const t = ctx.throughput.split;
   if (!t.meetsSpeed) warnings.push(`Even one request at a time runs at about ${Math.round(t.perUserTokPerSec)} tokens/s per user, below the ${ctx.workload.outputTokensPerSecPerUser} tokens/s target.`);
   if (!t.meetsTtft) warnings.push(`Unloaded time to first token is about ${Math.round(t.ttftMs)} ms, above the ${ctx.workload.ttftMsP95} ms p95 target.`);
+  const ts = sharedCtx.throughput.pooled;
+  if (sharedCtx.g !== ctx.g && !ts.meetsSpeed) warnings.push(`In the shared pool (${sharedCtx.g} GPUs per copy), even one request at a time runs at about ${Math.round(ts.perUserTokPerSec)} tokens/s per user, below the target.`);
 
   return {
     label,
     g: ctx.g,
+    gShared: sharedCtx.g,
+    tpOptions,
     unit: ctx.unit,
     model: ctx.model,
     gpu: ctx.gpu,
     workload: ctx.workload,
-    throughput: ctx.throughput,
+    throughput: { pooled: sharedCtx.throughput.pooled, split: ctx.throughput.split },
     hit: ctx.hit,
-    shared: { ...shared, gpus: wf.shared, power: powerKW(wf.shared, ctx, scenario), utilAvg: wf.shared ? ((ctx.pooledAvg / sharedRps) * ctx.g) / wf.shared : 0, utilPeak: wf.shared ? ((ctx.pooledPeak / sharedRps) * ctx.g) / wf.shared : 0 },
+    shared: { ...shared, gpus: wf.shared, power: powerKW(wf.shared, ctx, scenario), utilAvg: wf.shared ? ((sharedCtx.pooledAvg / sharedRps) * sharedCtx.g) / wf.shared : 0, utilPeak: wf.shared ? ((sharedCtx.pooledPeak / sharedRps) * sharedCtx.g) / wf.shared : 0 },
     bordered: {
       gpus: wf.bordered,
       units: sum(borders.map((b) => b.units)),

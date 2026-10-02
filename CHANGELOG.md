@@ -2,6 +2,20 @@
 
 Data files and the engine are versioned separately. Data versions are `YYYY.MINOR.PATCH`; the engine follows the package version.
 
+## Engine 0.2.0 — 2026-10-02
+
+- **GPUs per copy is now the cheapest size that fits, not the smallest.** Every tensor-parallel size that fits in memory is sized. The shared pool and the bordered deployment each keep the size that needs the fewest GPUs, with ties going to the smaller size.
+  - All borders share one size, and the shared pool can use a different one.
+  - When the sizes differ, the change shows up in the waterfall's per-border floor step.
+  - The levers, the burst pool and the cost crossover also use the cheapest size.
+  - A size pinned in Advanced still applies to everything.
+- **Effect** (all 400 GPU × model × precision × workload combinations, default six-border scenario): 67 combinations change; nothing ever needs more GPUs.
+  - The default scenario (70B FP8, agent, B300) and the deck fixture are unchanged.
+  - The largest changes are where the smallest copy couldn't meet the per-user speed target and ran one request at a time. Examples:
+    - RTX PRO 6000, 70B BF16, chat: 1,496 → 64 GPUs shared and 1,536 → 144 with borders, at 8 GPUs per copy instead of 4.
+    - B300, Qwen3 235B-A22B BF16, voice: shared 56 → 32 at 4 GPUs per copy. The borders stay at 2 GPUs per copy and 96 GPUs.
+  - Most chat and voice results on L40S, RTX PRO 6000 and the AMD GPUs for the 32B, 70B and MoE models drop several-fold.
+
 ## Data 2026.10.1 — 2026-10-02
 
 GPU catalog updated from a verified-specs report. Every value below was fetched from its primary source.

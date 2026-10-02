@@ -145,6 +145,34 @@ describe('step 2: GPUs per copy', () => {
     if (g > 1) assert.ok((g / 2) * gpu.memoryGB * 0.9 < need);
   });
 
+  test('lists every fitting size, ascending', () => {
+    const s = scenario({ model: 'llama-3.3-70b', gpu: 'h200-sxm', precision: 'BF16' });
+    const sizes = E.fittingTpSizes(E.resolveModel(s, data), E.resolveGpu(s, data), 'BF16', E.resolveWorkload(s, data), data, 'auto');
+    assert.deepEqual(sizes, [...sizes].sort((a, b) => a - b));
+    assert.equal(sizes[0], get('llama-3.3-70b', 'h200-sxm', 'BF16'));
+    assert.ok(sizes.includes(8));
+  });
+
+  test('the shared pool and the borders each keep their cheapest fitting size', () => {
+    // On B300, the large MoE at BF16 fits at 2, 4 and 8 GPUs per copy. The
+    // shared pool is cheapest at 4; the six small borders are cheapest at 2.
+    const r = E.calculate(scenario({ model: 'qwen3-235b-a22b', precision: 'BF16', workload: 'voice' }), data);
+    assert.deepEqual(r.tpOptions.map((o) => o.g), [2, 4, 8]);
+    assert.equal(r.gShared, 4);
+    assert.equal(r.g, 2);
+    assert.equal(r.shared.gpus, Math.min(...r.tpOptions.map((o) => o.shared)));
+    assert.equal(r.bordered.gpus, Math.min(...r.tpOptions.map((o) => o.bordered)));
+    assert.ok(r.shared.gpus < r.tpOptions[0].shared, 'cheaper than the smallest fitting size');
+    assert.equal(r.shared.gpus + sum(r.causes.map((c) => c.gpus)), r.bordered.gpus);
+  });
+
+  test('a pinned size is the only option', () => {
+    const r = E.calculate(scenario({ gpu: 'h100-sxm', advanced: { gpusPerCopy: '8' } }), data);
+    assert.deepEqual(r.tpOptions.map((o) => o.g), [8]);
+    assert.equal(r.g, 8);
+    assert.equal(r.gShared, 8);
+  });
+
   test('KV bytes per token follow 2 * layers * kv heads * head dim * bytes', () => {
     const m = data.models.models.find((x) => x.id === 'llama-3.3-70b');
     assert.equal(E.kvBytesPerToken(m, 'BF16', data), 2 * 80 * 8 * 128 * 2);
@@ -400,6 +428,18 @@ describe('validation: behaves sensibly', () => {
       if (r.error) continue;
       assert.ok(r.tax.gpus >= 0, `seed ${seed}`);
       for (const c of r.causes) assert.ok(c.gpus >= 0, `seed ${seed} ${c.id}: ${c.gpus}`);
+    }
+  });
+
+  test('every result is the cheapest over the fitting sizes, ties to the smaller size', () => {
+    for (let seed = 1; seed <= N; seed++) {
+      const r = E.calculate(randomScenario(rng(seed)), data);
+      if (r.error) continue;
+      const best = (key) => r.tpOptions.reduce((a, o) => (o[key] < a[key] ? o : a));
+      assert.equal(r.shared.gpus, best('shared').shared, `seed ${seed}`);
+      assert.equal(r.gShared, best('shared').g, `seed ${seed}`);
+      assert.equal(r.bordered.gpus, best('bordered').bordered, `seed ${seed}`);
+      assert.equal(r.g, best('bordered').g, `seed ${seed}`);
     }
   });
 

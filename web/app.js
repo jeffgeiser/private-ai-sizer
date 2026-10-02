@@ -214,7 +214,7 @@ function render() {
     : `≈ ${compact(rpd * (w.promptTokens + w.answerTokens))} tokens/day at ${fmt(w.promptTokens + w.answerTokens)} tokens per request`;
 
   const L = r.labels;
-  const tipGpu = `GPUs per copy from the memory formula; throughput: ${r.throughput.split.rule}`;
+  const tipGpu = `Cheapest GPUs per copy that fits in memory; throughput: ${r.throughput.split.rule}`;
   const power = (p) => `${fmt(p.it, 1)} kW IT${p.facility != null ? ` · ${fmt(p.facility, 1)} kW facility (PUE ${p.pue})` : ''}`;
   const after = r.levers.some((l) => l.applied);
   $('headline').innerHTML = `
@@ -376,9 +376,12 @@ function renderExplain(r) {
   const tp = r.throughput.pooled;
   const w = r.workload;
   $('explain').innerHTML = `<dl>
-    <dt>GPUs per model copy: ${r.g} ${badge('modeled', 'Memory formula; validated by the H100 footprint test once it lands')}</dt>
-    <dd>Smallest of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${w.targetConcurrency} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU.</dd>
-    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s split, ${fmt(tp.rps, 2)} pooled ${badge(r.labels.throughput, t.rule)}</dt>
+    <dt>GPUs per model copy: ${r.g === r.gShared ? r.g : `${r.g} in each border, ${r.gShared} in the shared pool`} ${badge('modeled', 'Memory formula; validated by the H100 footprint test once it lands')}</dt>
+    <dd>${state.advanced.gpusPerCopy && state.advanced.gpusPerCopy !== 'auto'
+      ? `Pinned to ${r.g} in Advanced.`
+      : `Every size of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${w.targetConcurrency} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU is sized, and the shared pool and the borders each keep their cheapest:`}</dd>
+    ${r.tpOptions.length > 1 ? `<dd><table><thead><tr><th>GPUs per copy</th><th>Shared pool</th><th>With borders</th></tr></thead><tbody>${r.tpOptions.map((o) => `<tr><td>${o.g}</td><td>${fmt(o.shared)}${o.g === r.gShared ? ' ✓' : ''}</td><td>${fmt(o.bordered)}${o.g === r.g ? ' ✓' : ''}</td></tr>`).join('')}</tbody></table></dd>` : ''}
+    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${r.g}-GPU border copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${r.gShared}-GPU shared copy`} ${badge(r.labels.throughput, t.rule)}</dt>
     <dd>${esc(t.rule)}. At ${t.concurrency} concurrent requests: about ${fmt(t.perUserTokPerSec)} tokens/s per user (target ${w.outputTokensPerSecPerUser}), about ${fmt(t.ttftMs)} ms unloaded time to first token (target ${w.ttftMsP95} ms p95). Cache hit ${pct(r.hit.pooled)} pooled, ${pct(r.hit.split)} split.${t.adapterFactor ? ` Adapters cost ${pct(1 - t.adapterFactor, 1)} of throughput.` : ''}</dd>
     <dt>Copies per border</dt>
     <dd>max(1, ⌈peak × (1 + ${pct(state.advanced.headroom)}) ÷ R⌉) + ${state.advanced.redundancy}, then × GPUs per copy${state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? ` for each of ${state.advanced.variants} variants` : ''}, rounded up to ${r.unit} GPU${r.unit === 1 ? '' : 's'}.</dd>
