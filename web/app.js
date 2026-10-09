@@ -5,10 +5,11 @@ import * as E from '../src/engine.js';
 import { defaultScenario, normalizeScenario, encodeScenario, decodeScenario, applyBorderPreset, BORDER_PRESETS } from '../src/scenario.js';
 
 const $ = (id) => document.getElementById(id);
-const fmt = (n, d = 0) => (n == null || !isFinite(n) ? '–' : n.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d }));
+// fmt always returns plain number text (never the raw input), so its output is safe in HTML.
+const fmt = (n, d = 0) => (n == null || n === '' || !Number.isFinite(Number(n)) ? '–' : Number(n).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d }));
 const pct = (x, d = 0) => fmt(x * 100, d) + '%';
 const signed = (n, f = fmt) => (n > 0 ? '+' : n < 0 ? '−' : '') + f(Math.abs(n));
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const compact = (n) => {
   if (!isFinite(n)) return '–';
   const units = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'k']];
@@ -131,8 +132,8 @@ function writeBorders() {
   box.innerHTML = state.borders.map((b, i) => `
     <div class="border" data-i="${i}">
       <label>Name <input data-f="name" value="${esc(b.name)}" aria-label="Region ${i + 1} name"></label>
-      <label>UTC± <input data-f="tz" type="number" step="0.5" min="-12" max="14" value="${b.tz ?? 0}" aria-label="Region ${i + 1} time zone offset"></label>
-      <label>Share <input data-f="share" type="number" min="0" step="any" value="${b.share ?? 1}" aria-label="Region ${i + 1} share of demand"></label>
+      <label>UTC± <input data-f="tz" type="number" step="0.5" min="-12" max="14" value="${esc(b.tz ?? 0)}" aria-label="Region ${i + 1} time zone offset"></label>
+      <label>Share <input data-f="share" type="number" min="0" step="any" value="${esc(b.share ?? 1)}" aria-label="Region ${i + 1} share of demand"></label>
       <button type="button" class="secondary" data-remove="${i}" aria-label="Remove border ${i + 1}"${state.borders.length <= 1 ? ' disabled' : ''}>×</button>
       <label class="group">Jurisdiction group (regions in the same group can pool) <input data-f="group" value="${esc(b.group || '')}" placeholder="own" aria-label="Region ${i + 1} group"></label>
     </div>`).join('');
@@ -145,7 +146,7 @@ function writeLevers() {
     const n = notes[l.id];
     const save = n?.applied && n.gpus < 0 ? `<span class="save">−${fmt(-n.gpus)}</span>` : '';
     const note = n ? (n.applied ? n.note || '' : n.note) : '';
-    return `<div class="lever"><label><input type="checkbox" data-lever="${l.id}"${state.levers[l.id] ? ' checked' : ''}>${esc(l.name)}${save}</label>${note ? `<span class="note eng">${esc(note)}</span>` : ''}</div>`;
+    return `<div class="lever"><label><input type="checkbox" data-lever="${esc(l.id)}"${state.levers[l.id] ? ' checked' : ''}>${esc(l.name)}${save}</label>${note ? `<span class="note eng">${esc(note)}</span>` : ''}</div>`;
   }).join('');
 }
 
@@ -249,7 +250,7 @@ function render() {
 }
 
 function renderStatus(r) {
-  $('status').innerHTML = `<strong>${LABEL_TEXT[r.label]}</strong> · for planning, not a quote`;
+  $('status').innerHTML = `<strong>${esc(LABEL_TEXT[r.label] || r.label)}</strong> · for planning, not a quote`;
 }
 
 function renderHero(r) {
@@ -316,7 +317,7 @@ function renderDrivers(r) {
 
 function unitWord(r) {
   if (r.unit === 1) return 'GPUs bought singly';
-  return r.gpu.purchaseUnit === 'rack' && r.unit === r.gpu.gpusPerUnit ? 'racks' : r.unit === r.gpu.gpusPerUnit ? 'servers' : `units of ${r.unit}`;
+  return r.gpu.purchaseUnit === 'rack' && r.unit === r.gpu.gpusPerUnit ? 'racks' : r.unit === r.gpu.gpusPerUnit ? 'servers' : `units of ${fmt(r.unit)}`;
 }
 
 function waterfallBars(r) {
@@ -416,7 +417,7 @@ function renderBorders(r) {
   const cols = Object.keys(rows[0]);
   const cell = (k, v) => (k.includes('share') || k.includes('utilization') ? pct(v, k.includes('utilization') && v < 0.1 ? 1 : 0) : k.includes('kW') ? fmt(v, 1) : typeof v === 'number' ? fmt(v) : esc(v));
   const total = { Region: 'Total', 'Demand share': 1, Copies: r.borders.reduce((a, b) => a + b.copies, 0), GPUs: r.bordered.gpus, [cols[4]]: r.bordered.units, 'Avg utilization': r.bordered.utilAvg, 'Peak utilization': r.bordered.utilPeak, 'IT kW': r.bordered.power.it, 'Facility kW': r.bordered.power.facility };
-  $('borderTable').innerHTML = `<caption class="hint">Copies include ${state.advanced.redundancy} spare${state.advanced.redundancy === 1 ? '' : 's'} per ${r.throughput && state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? 'variant per ' : ''}region.</caption>
+  $('borderTable').innerHTML = `<caption class="hint">Copies include ${fmt(state.advanced.redundancy)} spare${state.advanced.redundancy === 1 ? '' : 's'} per ${r.throughput && state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? 'variant per ' : ''}region.</caption>
     <thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((row) => `<tr>${cols.map((c) => `<td>${cell(c, row[c])}</td>`).join('')}</tr>`).join('')}</tbody>
     <tfoot><tr>${cols.map((c) => `<td>${cell(c, total[c])}</td>`).join('')}</tr></tfoot>`;
@@ -427,17 +428,17 @@ function renderExplain(r) {
   const tp = r.throughput.pooled;
   const w = r.workload;
   $('explain').innerHTML = `<dl>
-    <dt>GPUs per model copy: ${r.g === r.gShared ? r.g : `${r.g} in each region, ${r.gShared} in the shared pool`}</dt>
+    <dt>GPUs per model copy: ${r.g === r.gShared ? fmt(r.g) : `${fmt(r.g)} in each region, ${fmt(r.gShared)} in the shared pool`}</dt>
     <dd>${state.advanced.gpusPerCopy && state.advanced.gpusPerCopy !== 'auto'
-      ? `Pinned to ${r.g} in Advanced.`
-      : `Every size of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${w.targetConcurrency} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU is sized, and the shared pool and the regions each keep their cheapest:`}</dd>
-    ${r.tpOptions.length > 1 ? `<dd><table><thead><tr><th>GPUs per copy</th><th>Shared pool</th><th>With regions</th></tr></thead><tbody>${r.tpOptions.map((o) => `<tr><td>${o.g}</td><td>${fmt(o.shared)}${o.g === r.gShared ? ' ✓' : ''}</td><td>${fmt(o.bordered)}${o.g === r.g ? ' ✓' : ''}</td></tr>`).join('')}</tbody></table></dd>` : ''}
-    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${r.g}-GPU region copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${r.gShared}-GPU shared copy`}</dt>
-    <dd>${esc(t.rule)}. At ${t.concurrency} concurrent requests: about ${fmt(t.perUserTokPerSec)} tokens/s per user (target ${w.outputTokensPerSecPerUser}), about ${fmt(t.ttftMs)} ms unloaded time to first token (target ${w.ttftMsP95} ms p95). Cache hit ${pct(r.hit.pooled)} pooled, ${pct(r.hit.split)} split.${t.adapterFactor ? ` Adapters cost ${pct(1 - t.adapterFactor, 1)} of throughput.` : ''}</dd>
+      ? `Pinned to ${fmt(r.g)} in Advanced.`
+      : `Every size of 1, 2, 4 or 8 GPUs where ${esc(r.model.name)} weights at ${esc(state.precision)} plus the KV cache for ${fmt(w.targetConcurrency)} concurrent requests of ${fmt(w.promptTokens + w.answerTokens)} tokens fit in 90% of ${fmt(r.gpu.memoryGB)} GB per GPU is sized, and the shared pool and the regions each keep their cheapest:`}</dd>
+    ${r.tpOptions.length > 1 ? `<dd><table><thead><tr><th>GPUs per copy</th><th>Shared pool</th><th>With regions</th></tr></thead><tbody>${r.tpOptions.map((o) => `<tr><td>${fmt(o.g)}</td><td>${fmt(o.shared)}${o.g === r.gShared ? ' ✓' : ''}</td><td>${fmt(o.bordered)}${o.g === r.g ? ' ✓' : ''}</td></tr>`).join('')}</tbody></table></dd>` : ''}
+    <dt>Throughput per copy: ${fmt(t.rps, 2)} requests/s ${r.g === r.gShared ? 'split' : `per ${fmt(r.g)}-GPU region copy`}, ${fmt(tp.rps, 2)} ${r.g === r.gShared ? 'pooled' : `per ${fmt(r.gShared)}-GPU shared copy`}</dt>
+    <dd>${esc(t.rule)}. At ${fmt(t.concurrency)} concurrent requests: about ${fmt(t.perUserTokPerSec)} tokens/s per user (target ${fmt(w.outputTokensPerSecPerUser)}), about ${fmt(t.ttftMs)} ms unloaded time to first token (target ${fmt(w.ttftMsP95)} ms p95). Cache hit ${pct(r.hit.pooled)} pooled, ${pct(r.hit.split)} split.${t.adapterFactor ? ` Adapters cost ${pct(1 - t.adapterFactor, 1)} of throughput.` : ''}</dd>
     <dt>Copies per region</dt>
-    <dd>max(1, ⌈peak × (1 + ${pct(state.advanced.headroom)}) ÷ R⌉) + ${state.advanced.redundancy}, then × GPUs per copy${state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? ` for each of ${state.advanced.variants} variants` : ''}, rounded up to ${r.unit} GPU${r.unit === 1 ? '' : 's'}.</dd>
+    <dd>max(1, ⌈peak × (1 + ${pct(state.advanced.headroom)}) ÷ R⌉) + ${fmt(state.advanced.redundancy)}, then × GPUs per copy${state.advanced.variants > 1 && state.advanced.variantMode === 'separate' ? ` for each of ${fmt(state.advanced.variants)} variants` : ''}, rounded up to ${fmt(r.unit)} GPU${r.unit === 1 ? '' : 's'}.</dd>
     <dt>Data labels</dt>
-    <dd>Results take the weakest label of their inputs: ${LABEL_TEXT[r.label].toLowerCase()}. GPU (${esc(r.gpu.name)}): ${esc(gpuLabels(r.gpu))}. Model: ${esc(r.model.label)}. Throughput: ${esc(r.labels.throughput)}. Workload shape and cache hit rates: ${esc(r.workload.label)}.</dd>
+    <dd>Results take the weakest label of their inputs: ${esc((LABEL_TEXT[r.label] || r.label).toLowerCase())}. GPU (${esc(r.gpu.name)}): ${esc(gpuLabels(r.gpu))}. Model: ${esc(r.model.label)}. Throughput: ${esc(r.labels.throughput)}. Workload shape and cache hit rates: ${esc(r.workload.label)}.</dd>
     <dt>Shared pool</dt>
     <dd>The same steps once for total demand, at the peak of the summed hourly curve (${fmt(r.borders.reduce((a, b) => a + b.peakRps, 0), 2)} req/s if peaks lined up, ${fmt(E.buildContext(state, data).pooledPeak, 2)} req/s actually).</dd>
   </dl>`;
@@ -524,7 +525,7 @@ async function main() {
     $('error').textContent = e.message;
     return;
   }
-  state = decodeScenario(location.hash) || defaultScenario();
+  state = decodeScenario(location.hash, data) || defaultScenario();
   renderDataVersion();
   applyView();
   writeForm();
@@ -597,7 +598,7 @@ async function main() {
     resizeTimer = setTimeout(() => last && !last.error && renderSummaryChart(last), 120);
   });
   window.addEventListener('hashchange', () => {
-    const s = decodeScenario(location.hash);
+    const s = decodeScenario(location.hash, data);
     if (s && JSON.stringify(s) !== JSON.stringify(state)) {
       state = s;
       applyView();

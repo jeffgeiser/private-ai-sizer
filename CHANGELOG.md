@@ -2,6 +2,13 @@
 
 Data files and the engine are versioned separately. Data versions are `YYYY.MINOR.PATCH`; the engine follows the package version.
 
+## Page 0.5.1 — 2026-10-09
+
+- **Share links are validated.** `decodeScenario` and `normalizeScenario` now type-check and range-clamp every field, restrict enums and catalog ids to known values, cap borders at 20 and text at 64 characters, and drop unknown keys. Valid links from earlier versions decode unchanged.
+- **The page escapes everything it writes as HTML**, including numbers that come from a share link. A crafted link could previously inject markup through a region's time zone or share, or the redundancy setting.
+- `scripts/serve.js`: a malformed URL returns 400 instead of crashing the server; the path check compares against the root plus a separator, so a sibling folder with the same prefix can't be read; directories return 404; only GET and HEAD are served; it listens on 127.0.0.1.
+- New tests: `test/validation.test.js` and `test/serve.test.js`.
+
 ## Page 0.5.0 — 2026-10-02
 
 - **Cost and prices removed from the page** in both views: the monthly cost line, the cost and break-even table, and the price inputs. This settles the spec's open question about showing example prices.

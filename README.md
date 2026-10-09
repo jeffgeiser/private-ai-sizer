@@ -6,7 +6,7 @@ The extra capacity that regions need over one shared pool is the **distribution 
 
 **This is a planning estimate, not a quote.** Every number carries a label: `measured` (our benchmark), `published` (vendor) or `modeled`. A result built from mixed inputs takes the weakest label. In this first release everything is `modeled`, because the benchmark results aren't in the data files yet.
 
-Nothing a user enters leaves the browser. The page fetches only the three static data files. The scenario is stored in the URL fragment (after `#`), which browsers never send to a server.
+Nothing a user enters leaves the browser. A scenario opened from a share link is treated as untrusted input: every field is validated (`normalizeScenario`) and everything shown on the page is escaped. The page fetches only the three static data files. The scenario is stored in the URL fragment (after `#`), which browsers never send to a server.
 
 ## Layout
 
@@ -25,7 +25,7 @@ Nothing a user enters leaves the browser. The page fetches only the three static
 
 ```sh
 npm test                 # Node 20+, no install needed
-node scripts/serve.js    # then open http://localhost:8080/web/
+node scripts/serve.js    # then open http://localhost:8080/web/ (listens on 127.0.0.1 only)
 ```
 
 The page imports `../src/*.js` and fetches `../data/*.json`, so any static host that serves the repo root works.
